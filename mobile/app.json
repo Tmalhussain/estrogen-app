@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "صيدلية إستروجين",
+    "slug": "estrogen-pharmacy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "estrogen",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#FAF3EC"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "sa.estrogen.pharmacy",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "نحتاج إلى الكاميرا لالتقاط صور الوصفات الطبية",
+        "NSPhotoLibraryUsageDescription": "نحتاج إلى الصور لرفع الوصفات الطبية",
+        "NSFaceIDUsageDescription": "يُستخدم Face ID لتأمين حسابكِ",
+        "CFBundleAllowMixedLocalizations": true,
+        "CFBundleDevelopmentRegion": "ar"
+      }
+    },
+    "android": {
+      "package": "sa.estrogen.pharmacy",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#FAF3EC"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "نحتاج إلى الصور لرفع الوصفات الطبية",
+          "cameraPermission": "نحتاج إلى الكاميرا لالتقاط صور الوصفات الطبية"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "يُستخدم Face ID لتأمين حسابكِ"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

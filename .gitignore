@@ -1,0 +1,82 @@
+# =============================================================================
+# Estrogen Pharmacy — Top-level .gitignore
+# =============================================================================
+
+# ── Dependencies (massive) ─────────────────────────────
+**/node_modules/
+
+# ── Build outputs ──────────────────────────────────────
+**/dist/
+**/build/
+**/lib/
+**/.next/
+**/.expo/
+**/.expo-shared/
+**/coverage/
+**/.turbo/
+**/.cache/
+
+# ── Compiled assets ────────────────────────────────────
+**/*.tsbuildinfo
+
+# ── Logs ──────────────────────────────────────────────
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── Environment & secrets ─────────────────────────────
+**/.env
+**/.env.local
+**/.env.*.local
+**/service-account*.json
+**/google-services.json
+**/GoogleService-Info.plist
+
+# ── OS files ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editor ────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Firebase ──────────────────────────────────────────
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# ── Expo / React Native ───────────────────────────────
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/expo-env.d.ts
+
+# ── Native build output (if Expo bare workflow ever used) ─
+mobile/ios/
+mobile/android/
+
+# ── Unrelated / external projects ─────────────────────
+# bus-router is its own project with its own git repo.
+# Exclude it from the Estrogen pharmacy monorepo.
+/bus-router/
+
+# ── Internal / private docs (gitkeep individual files via -f) ─
+council-reports/
+
+# ── Claude Code session local state (safe to exclude) ─
+.claude/
+.claude/local/
+.claude/projects/
+
+# ── gstack project-level state ────────────────────────
+# Already lives outside the repo at ~/.gstack/, but just in case.
+.gstack/
+
+# ── Sprint-level local artifacts ──────────────────────
+# Locked design preview HTMLs live in ~/.gstack/, not in repo.
+*.local.html

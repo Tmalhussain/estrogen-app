@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #6D2C4A;
+  --primary-dark: #4A1E33;
+  --primary-soft: #F3E8EE;
+  --accent: #D4956A;
+  --accent-light: #FBF0E8;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --background: #F8F6F7;
+  --surface: #FFFFFF;
+  --text: #1A1A2E;
+  --text-secondary: #6B7280;
+  --border: #E5E7EB;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+}
+
+/* RTL support */
+[dir="rtl"] {
+  text-align: right;
+}
