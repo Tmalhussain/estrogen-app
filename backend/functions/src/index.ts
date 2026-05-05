@@ -40,5 +40,6 @@ export {
 
 // ── Scheduled jobs ──────────────────────────────────────────
 export { aggregateDailyStats } from './scheduled/dailyStats';
+export { catalogSync } from './scheduled/catalogSync';
 export { lowStockAlert } from './scheduled/lowStockAlert';
 export { posSync } from './scheduled/posSync';
