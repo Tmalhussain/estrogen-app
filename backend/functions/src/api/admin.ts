@@ -7,6 +7,11 @@
 
 import * as functions from 'firebase-functions';
 import { db, FieldValue, REGION } from '../lib/admin';
+import {
+  assertTransition,
+  shouldNotifyCustomer,
+  type OrderStatus,
+} from '../lib/orderStatus';
 
 /**
  * Search products with full-text matching.
@@ -66,16 +71,25 @@ export const updateOrderStatus = functions
       throw new functions.https.HttpsError('permission-denied', 'Only staff can update order status');
     }
 
-    const { orderId, newStatus, notes } = data;
+    const { orderId, newStatus, notes } = data as {
+      orderId?: string;
+      newStatus?: OrderStatus;
+      notes?: string;
+    };
 
     if (!orderId || !newStatus) {
       throw new functions.https.HttpsError('invalid-argument', 'orderId and newStatus required');
     }
 
-    const validStatuses = [
-      'placed', 'pending_review', 'pharmacist_review',
-      'approved', 'packing', 'out_for_delivery',
-      'delivered', 'cancelled',
+    // Canonical state machine — must match orderStatus.OrderStatus exactly.
+    const validStatuses: OrderStatus[] = [
+      'placed',
+      'pending_review',
+      'pharmacist_review',
+      'preparing',
+      'out_for_delivery',
+      'delivered',
+      'cancelled',
     ];
 
     if (!validStatuses.includes(newStatus)) {
@@ -89,6 +103,20 @@ export const updateOrderStatus = functions
       throw new functions.https.HttpsError('not-found', `Order ${orderId} not found`);
     }
 
+    // Forward-only state machine guard. Throws on illegal transitions
+    // (e.g. delivered → preparing). Same-state writes return isNoOp = true
+    // so we can short-circuit and stay idempotent — no extra write, no
+    // duplicate downstream notification fan-out.
+    const currentStatus = (orderDoc.data()?.status ?? 'placed') as OrderStatus;
+    const { isNoOp } = assertTransition(currentStatus, newStatus);
+
+    if (isNoOp) {
+      functions.logger.info(
+        `Order ${orderId} status unchanged at ${newStatus} (no-op) by ${context.auth.uid}`
+      );
+      return { success: true, orderId, newStatus, noOp: true };
+    }
+
     const updateData: Record<string, any> = {
       status: newStatus,
       updatedAt: FieldValue.serverTimestamp(),
@@ -99,8 +127,15 @@ export const updateOrderStatus = functions
 
     await orderRef.update(updateData);
 
-    functions.logger.info(`Order ${orderId} updated to ${newStatus} by ${context.auth.uid}`);
-    return { success: true, orderId, newStatus };
+    // Push fan-out is handled by onOrderUpdated → onNotificationCreated.
+    // shouldNotifyCustomer here is informational so callers/tests can see
+    // whether this transition is one the customer is told about.
+    const notify = shouldNotifyCustomer(newStatus);
+
+    functions.logger.info(
+      `Order ${orderId} ${currentStatus} → ${newStatus} by ${context.auth.uid} (notify=${notify})`
+    );
+    return { success: true, orderId, newStatus, notify };
   });
 
 /**

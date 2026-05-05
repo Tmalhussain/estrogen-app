@@ -20,6 +20,7 @@ import {
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // `getReactNativePersistence` only exists on the React Native entry of
@@ -67,5 +68,9 @@ const db = getFirestore(app);
 // ── Cloud Storage ────────────────────────────────────────────
 const storage = getStorage(app);
 
-export { app, auth, db, storage };
+// ── Cloud Functions ──────────────────────────────────────────
+// Region must match backend/functions/src/lib/admin.ts REGION ('me-central1').
+const functions = getFunctions(app, 'me-central1');
+
+export { app, auth, db, storage, functions };
 export default app;
