@@ -138,10 +138,14 @@ export default function OtpScreen() {
         router.replace(`/${locale}/(tabs)`);
         return;
       } catch (err: unknown) {
-        // Don't log the OTP code itself. The Cloud Function returns generic
-        // user-facing errors via HttpsError.
+        // Don't log the OTP code itself. The Cloud Function returns
+        // bilingual HttpsError: details.messageAr is the Arabic
+        // equivalent of err.message. Pick whichever matches user locale.
+        const e = err as { message?: string; details?: { messageAr?: string } };
         const msg =
-          (err as { message?: string })?.message ?? t('otpInvalid');
+          language === 'ar' && e.details?.messageAr
+            ? e.details.messageAr
+            : e.message ?? t('otpInvalid');
         showAlert(t('error'), msg, [{ text: t('ok') }]);
         setLoading(false);
         return;
@@ -187,7 +191,11 @@ export default function OtpScreen() {
         inputs.current[0]?.focus();
         return;
       } catch (err: unknown) {
-        const msg = (err as { message?: string })?.message ?? t('error');
+        const e = err as { message?: string; details?: { messageAr?: string } };
+        const msg =
+          language === 'ar' && e.details?.messageAr
+            ? e.details.messageAr
+            : e.message ?? t('error');
         showAlert(t('error'), msg, [{ text: t('ok') }]);
         return;
       }

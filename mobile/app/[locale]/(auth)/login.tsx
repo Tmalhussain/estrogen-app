@@ -83,7 +83,13 @@ export default function LoginScreen() {
         });
         return;
       } catch (err: unknown) {
-        const msg = (err as { message?: string })?.message ?? t('error');
+        // Cloud Function HttpsError carries bilingual messages —
+        // details.messageAr is the Arabic equivalent of err.message.
+        const e = err as { message?: string; details?: { messageAr?: string } };
+        const msg =
+          language === 'ar' && e.details?.messageAr
+            ? e.details.messageAr
+            : e.message ?? t('error');
         showAlert(t('error'), msg, [{ text: t('ok') }]);
         return;
       }
