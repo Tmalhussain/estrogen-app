@@ -8,13 +8,18 @@
 # ── Build outputs ──────────────────────────────────────
 **/dist/
 **/build/
-**/lib/
 **/.next/
 **/.expo/
 **/.expo-shared/
 **/coverage/
 **/.turbo/
 **/.cache/
+
+# Compiled TypeScript output. Specific to backend/functions and backend
+# (NestJS skeleton). Do NOT use **/lib/ — that also matches
+# backend/functions/src/lib/ which is SOURCE code, not output.
+backend/functions/lib/
+backend/lib/
 
 # ── Compiled assets ────────────────────────────────────
 **/*.tsbuildinfo
