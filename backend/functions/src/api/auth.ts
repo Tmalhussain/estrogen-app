@@ -38,9 +38,14 @@ const MAX_VERIFY_ATTEMPTS = 3;          // 3 wrong codes per attempt
 
 // ── Helpers ───────────────────────────────────────────────────────
 function generateOtp(): string {
+  // crypto.randomInt is cryptographically secure; Math.random() is not.
+  // Predicting the next OTP from prior ones would be a real attack vector
+  // even with rate limiting and short TTL.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const crypto = require('crypto') as typeof import('crypto');
   const min = Math.pow(10, OTP_LENGTH - 1);
-  const max = Math.pow(10, OTP_LENGTH) - 1;
-  return Math.floor(min + Math.random() * (max - min)).toString();
+  const max = Math.pow(10, OTP_LENGTH); // randomInt is exclusive on max
+  return crypto.randomInt(min, max).toString();
 }
 
 function normalizePhone(phone: string): string {

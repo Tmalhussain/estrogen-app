@@ -119,7 +119,12 @@ export const catalogSync = functions
 
     let rawItems: unknown[] = [];
     try {
-      const res = await fetch(apiUrl);
+      // 60s hard timeout. Without this, a hung upstream catalog API holds the
+      // function for the full 300s timeoutSeconds limit before the runtime kills
+      // it. Failing fast lets the next-day cron retry on a fresh attempt.
+      const res = await fetch(apiUrl, {
+        signal: AbortSignal.timeout(60_000),
+      });
       if (!res.ok) {
         functions.logger.error(
           `catalogSync fetch failed: ${res.status} ${res.statusText}`

@@ -107,7 +107,19 @@ export const updateOrderStatus = functions
     // (e.g. delivered → preparing). Same-state writes return isNoOp = true
     // so we can short-circuit and stay idempotent — no extra write, no
     // duplicate downstream notification fan-out.
-    const currentStatus = (orderDoc.data()?.status ?? 'placed') as OrderStatus;
+    //
+    // Legacy aliases: orders created before the canonical state machine
+    // landed may carry deprecated statuses ('approved', 'packing') that
+    // are not in OrderStatus. Translate them into their canonical
+    // equivalent so those orders can still flow through updates instead
+    // of getting permanently locked out by assertTransition.
+    const LEGACY_STATUS_ALIASES: Record<string, OrderStatus> = {
+      approved: 'preparing',
+      packing: 'preparing',
+    };
+    const rawCurrent = (orderDoc.data()?.status ?? 'placed') as string;
+    const currentStatus: OrderStatus =
+      (LEGACY_STATUS_ALIASES[rawCurrent] ?? rawCurrent) as OrderStatus;
     const { isNoOp } = assertTransition(currentStatus, newStatus);
 
     if (isNoOp) {
