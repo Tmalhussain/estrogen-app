@@ -17,6 +17,14 @@ import { useAuthStore } from '../../../store';
 import { useUserDb } from '../../../store/userDb';
 import { verifyOtp as verifyOtpCode, generateOtp, getCurrentOtpCode } from '../../../utils/otp';
 import { showAlert } from '../../../utils/alert';
+import { httpsCallable } from 'firebase/functions';
+import { signInWithCustomToken } from 'firebase/auth';
+import { auth, functions } from '../../../config/firebase';
+
+// Feature flag — when 'true', the screen calls the real verifyOtp Cloud
+// Function (Sprint 0 ARCH-1.1) and signs in via signInWithCustomToken.
+// Default: keep the existing zustand-mocked flow so dev / demo work unchanged.
+const USE_REAL_AUTH = process.env.EXPO_PUBLIC_USE_REAL_AUTH === 'true';
 
 const OTP_LENGTH = 6;
 const COUNTDOWN_SECONDS = 90;
@@ -93,8 +101,54 @@ export default function OtpScreen() {
     [otp]
   );
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     setLoading(true);
+
+    if (USE_REAL_AUTH) {
+      try {
+        const verifyOtpFn = httpsCallable<
+          { phoneNumber: string; code: string },
+          { ok: boolean; token: string; uid: string }
+        >(functions, 'verifyOtp');
+        const res = await verifyOtpFn({
+          phoneNumber: phone ?? '',
+          code: otp.join(''),
+        });
+        const token = res.data?.token;
+        if (!token) {
+          showAlert(t('error'), t('otpInvalid'), [{ text: t('ok') }]);
+          setLoading(false);
+          return;
+        }
+        await signInWithCustomToken(auth, token);
+        // Hydrate the local auth store so the rest of the app keeps working.
+        const dbUser = findByPhone(phone ?? '');
+        if (dbUser) {
+          login({
+            name: `${dbUser.firstName} ${dbUser.lastName}`,
+            phone: dbUser.phone,
+            email: dbUser.email,
+            dateOfBirth: dbUser.dateOfBirth,
+            nationalId: dbUser.nationalId,
+          });
+        } else {
+          login({ name: name ?? phone ?? '', phone: phone ?? '', email: email ?? '' });
+        }
+        setLoading(false);
+        router.replace(`/${locale}/(tabs)`);
+        return;
+      } catch (err: unknown) {
+        // Don't log the OTP code itself. The Cloud Function returns generic
+        // user-facing errors via HttpsError.
+        const msg =
+          (err as { message?: string })?.message ?? t('otpInvalid');
+        showAlert(t('error'), msg, [{ text: t('ok') }]);
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Mock path (default) — preserves existing demo flow.
     const result = verifyOtpCode(phone ?? '', otp.join(''));
     if (!result.success) {
       const msg = result.errorMessage?.[language] ?? t('otpInvalid');
@@ -119,7 +173,25 @@ export default function OtpScreen() {
     router.replace(`/${locale}/(tabs)`);
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
+    if (USE_REAL_AUTH) {
+      try {
+        const sendOtpFn = httpsCallable<
+          { phoneNumber: string },
+          { ok: boolean; expiresIn: number }
+        >(functions, 'sendOtp');
+        await sendOtpFn({ phoneNumber: phone ?? '' });
+        setDemoCode(null);
+        setCountdown(COUNTDOWN_SECONDS);
+        setOtp(Array(OTP_LENGTH).fill(''));
+        inputs.current[0]?.focus();
+        return;
+      } catch (err: unknown) {
+        const msg = (err as { message?: string })?.message ?? t('error');
+        showAlert(t('error'), msg, [{ text: t('ok') }]);
+        return;
+      }
+    }
     const code = generateOtp(phone ?? '');
     setDemoCode(code);
     showAlert(t('otpDemo'), code);

@@ -17,6 +17,7 @@
 
 import * as functions from 'firebase-functions';
 import { db, FieldValue, REGION } from '../lib/admin';
+import { withBranch, DEFAULT_BRANCH_ID } from '../lib/branchGuard';
 
 interface CartItem {
   productId: string;
@@ -170,9 +171,10 @@ export const placeOrder = functions
         });
       }
 
-      // Create order
+      // Create order. v1 ships single-branch; withBranch stamps branchId='main'
+      // on every order so v2 multi-store rollout doesn't need a backfill.
       const initialStatus = requiresPrescription ? 'pharmacist_review' : 'placed';
-      const orderDoc = {
+      const orderDoc = withBranch({
         userId: uid,
         items: orderItems,
         subtotal: +subtotal.toFixed(2),
@@ -192,7 +194,7 @@ export const placeOrder = functions
         discreetPackaging: data.discreetPackaging ?? true,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
-      };
+      }, DEFAULT_BRANCH_ID);
       tx.set(orderRef, orderDoc);
 
       // Create prescription if needed

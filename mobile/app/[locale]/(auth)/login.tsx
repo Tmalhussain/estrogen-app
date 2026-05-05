@@ -20,6 +20,12 @@ import { useAuthStore } from '../../../store';
 import { authenticate, findByPhone } from '../../../store/userDb';
 import { generateOtp } from '../../../utils/otp';
 import { showAlert } from '../../../utils/alert';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../../config/firebase';
+
+// Feature flag — when 'true', send OTP via Unifonic Cloud Function.
+// Default: keep zustand-mocked OTP so existing dev / demo paths work.
+const USE_REAL_AUTH = process.env.EXPO_PUBLIC_USE_REAL_AUTH === 'true';
 
 export default function LoginScreen() {
   const { t, isRTL, flexDir, align } = useTranslation();
@@ -60,13 +66,36 @@ export default function LoginScreen() {
 
   const handleOtpLogin = async () => {
     if (!phone || phone.length < 10) return;
-    // Verify the phone exists via Firebase
+
+    if (USE_REAL_AUTH) {
+      // Real path: ask the backend to issue an OTP via Unifonic. We do NOT
+      // pre-check that the phone is in our user db — the verifyOtp Cloud
+      // Function provisions a Firebase Auth user on first verify.
+      try {
+        const sendOtpFn = httpsCallable<
+          { phoneNumber: string },
+          { ok: boolean; expiresIn: number }
+        >(functions, 'sendOtp');
+        await sendOtpFn({ phoneNumber: phone });
+        router.push({
+          pathname: `/${locale}/(auth)/otp` as any,
+          params: { phone, mode: 'login' },
+        });
+        return;
+      } catch (err: unknown) {
+        const msg = (err as { message?: string })?.message ?? t('error');
+        showAlert(t('error'), msg, [{ text: t('ok') }]);
+        return;
+      }
+    }
+
+    // Mock path (default) — verify phone exists in seeded user db,
+    // generate a demo OTP, and navigate. Preserves existing demo behavior.
     const user = await findByPhone(phone);
     if (!user) {
       showAlert(t('error'), t('phoneNotRegistered'), [{ text: t('ok') }]);
       return;
     }
-    // Generate OTP and navigate
     const code = generateOtp(phone);
     showAlert(t('otpDemo'), code, [
       {

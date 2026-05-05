@@ -9,6 +9,11 @@
 **/dist/
 **/build/
 **/lib/
+# Negate: backend Cloud Functions keep shared helpers under src/lib/
+# (admin, branchGuard, orderStatus, customClaims). The generic **/lib/
+# rule above was accidentally swallowing them in Sprint 0.
+!backend/functions/src/lib/
+!backend/functions/src/lib/**
 **/.next/
 **/.expo/
 **/.expo-shared/
