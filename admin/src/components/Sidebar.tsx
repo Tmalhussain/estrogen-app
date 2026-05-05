@@ -28,8 +28,10 @@ export default function Sidebar() {
   const { t, language, toggleLanguage } = useAdminLang();
   const session = getSession();
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    // clearSession is async now (Firebase Auth signOut). Awaiting is safe;
+    // even if it errors, the local cache is dropped synchronously inside.
+    await clearSession();
     router.push('/login');
   };
 

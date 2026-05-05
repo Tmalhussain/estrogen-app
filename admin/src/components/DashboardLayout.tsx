@@ -3,18 +3,34 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from './Sidebar';
-import { isLoggedIn } from '../lib/adminAuth';
+import { isLoggedIn, subscribeToAuthState } from '../lib/adminAuth';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (!isLoggedIn()) {
-      router.replace('/login');
-    } else {
+    // Subscribe to Firebase Auth state changes so the localStorage cache
+    // stays in sync with the real auth state across reloads, silent token
+    // refresh, and explicit sign-out from another tab.
+    const unsubscribe = subscribeToAuthState((session) => {
+      if (!session) {
+        router.replace('/login');
+      } else {
+        setChecked(true);
+      }
+    });
+
+    // Optimistic gate based on the cached session. If the cache says we're
+    // logged in, render through immediately; the subscription above will
+    // bounce us to /login if Firebase disagrees within a tick.
+    if (isLoggedIn()) {
       setChecked(true);
+    } else {
+      router.replace('/login');
     }
+
+    return unsubscribe;
   }, [router]);
 
   if (!checked) {

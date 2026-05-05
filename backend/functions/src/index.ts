@@ -20,6 +20,9 @@ export { onNotificationCreated } from './triggers/onNotificationCreated';
 // ── Auth (Unifonic OTP, locked by /plan-eng-review ARCH-1.1) ─
 export { sendOtp, verifyOtp } from './api/auth';
 
+// ── First-admin bootstrap (one-shot, locked after first call) ─
+export { bootstrapFirstAdmin } from './api/adminBootstrap';
+
 // ── Customer-facing callables ───────────────────────────────
 export { placeOrder, cancelOrder } from './api/orders';
 export { validatePromoCode } from './api/promo';

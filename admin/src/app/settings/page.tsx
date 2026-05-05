@@ -32,9 +32,10 @@ export default function SettingsPage() {
     }
 
     setCreating(true);
-    await new Promise((r) => setTimeout(r, 400));
 
-    const result = createAdmin(newUsername.trim(), newPassword, newName.trim());
+    // createAdmin now invokes the createStaffAccount Cloud Function,
+    // which is async and gated by isAdmin() on the backend.
+    const result = await createAdmin(newUsername.trim(), newPassword, newName.trim());
     if (result.success) {
       setMessage(t('adminCreated'));
       setMessageType('success');
