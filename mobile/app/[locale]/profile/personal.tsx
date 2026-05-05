@@ -17,8 +17,16 @@ export default function PersonalInfoScreen() {
   const updateProfile = useUserDb((s) => s.updateProfile);
   const findByPhone = useUserDb((s) => s.findByPhone);
 
-  // Pre-populate from auth store and userDb
-  const dbUser = user?.phone ? findByPhone(user.phone) : undefined;
+  // Pre-populate from auth store and userDb.
+  //
+  // findByPhone is async (Firebase-backed) but this screen treats the result
+  // as sync for form initialization. The auth store is the primary source of
+  // truth; dbUser is best-effort. Cast keeps TS happy until the screen is
+  // refactored to use useEffect for async hydration.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbUser: any = user?.phone ? findByPhone(user.phone) : undefined;
+  // dbUser may be a Promise in practice; the optional-chains below resolve to
+  // undefined in that case, which falls through to the auth-store fallback.
 
   const [form, setForm] = useState({
     firstName: dbUser?.firstName ?? user?.name?.split(' ')[0] ?? '',

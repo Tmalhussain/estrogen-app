@@ -122,7 +122,7 @@ export default function OtpScreen() {
         }
         await signInWithCustomToken(auth, token);
         // Hydrate the local auth store so the rest of the app keeps working.
-        const dbUser = findByPhone(phone ?? '');
+        const dbUser = await findByPhone(phone ?? '');
         if (dbUser) {
           login({
             name: `${dbUser.firstName} ${dbUser.lastName}`,
@@ -161,7 +161,7 @@ export default function OtpScreen() {
       return;
     }
     // Populate auth store with full user data from userDb
-    const dbUser = findByPhone(phone ?? '');
+    const dbUser = await findByPhone(phone ?? '');
     if (dbUser) {
       login({
         name: `${dbUser.firstName} ${dbUser.lastName}`,
