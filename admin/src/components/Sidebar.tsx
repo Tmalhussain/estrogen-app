@@ -35,10 +35,19 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 bg-[var(--primary-dark)] min-h-screen flex flex-col text-white">
-      {/* Logo */}
-      <div className="p-6 border-b border-white/10">
-        <h1 className="text-xl font-bold text-white">{t('appName')}</h1>
-        <p className="text-xs text-white/60 mt-1">{t('adminPanel')}</p>
+      {/* Logo + wordmark — uses the real logo asset from /public/logo.jpeg */}
+      <div className="p-6 border-b border-white/10 flex flex-col items-center gap-3">
+        <div className="bg-white rounded-2xl p-2 shadow-md">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.jpeg"
+            alt="Estrogen Pharmacy"
+            width={84}
+            height={84}
+            className="rounded-xl"
+          />
+        </div>
+        <p className="text-xs text-white/60 text-center">{t('adminPanel')}</p>
       </div>
 
       {/* Navigation */}

@@ -36,6 +36,65 @@ const MAX_ATTEMPTS_PER_WINDOW = 5;       // 5 sends per phone per 15 min
 const ATTEMPT_WINDOW_SEC = 15 * 60;     // brute-force window
 const MAX_VERIFY_ATTEMPTS = 3;          // 3 wrong codes per attempt
 
+// ── Bilingual error messages ──────────────────────────────────────
+// HttpsError carries an English message (back-compat with old clients)
+// AND an `details.messageAr` so the mobile app can show the Saudi-locale
+// string when the user has Arabic selected. Keep both copies in sync.
+type ErrLabel =
+  | 'invalidPhone'
+  | 'tooManySends'
+  | 'sendFailed'
+  | 'invalidCodeFormat'
+  | 'noActiveOtp'
+  | 'tooManyVerifies'
+  | 'wrongCode';
+
+const AUTH_ERR: Record<
+  ErrLabel,
+  { code: functions.https.FunctionsErrorCode; en: string; ar: string }
+> = {
+  invalidPhone: {
+    code: 'invalid-argument',
+    en: 'Please enter a valid Saudi mobile number (+966 5XX XXX XXXX).',
+    ar: 'الرجاء إدخال رقم جوال سعودي صحيح (+٩٦٦ ٥XX XXX XXXX).',
+  },
+  tooManySends: {
+    code: 'resource-exhausted',
+    en: 'Too many attempts. Please try again in 15 minutes.',
+    ar: 'محاولات كثيرة. يرجى المحاولة بعد ١٥ دقيقة.',
+  },
+  sendFailed: {
+    code: 'internal',
+    en: 'Could not send OTP. Please try again.',
+    ar: 'تعذر إرسال رمز التحقق. حاولي مرة أخرى.',
+  },
+  invalidCodeFormat: {
+    code: 'invalid-argument',
+    en: 'OTP must be 6 digits.',
+    ar: 'يجب أن يتكون رمز التحقق من ٦ أرقام.',
+  },
+  noActiveOtp: {
+    code: 'failed-precondition',
+    en: 'No active OTP. Please request a new code.',
+    ar: 'لا يوجد رمز نشط. يرجى طلب رمز جديد.',
+  },
+  tooManyVerifies: {
+    code: 'resource-exhausted',
+    en: 'Too many wrong codes. Request a new OTP.',
+    ar: 'محاولات تحقق كثيرة. اطلبي رمزًا جديدًا.',
+  },
+  wrongCode: {
+    code: 'permission-denied',
+    en: 'Wrong code. Please try again.',
+    ar: 'الرمز غير صحيح. حاولي مرة أخرى.',
+  },
+};
+
+function authError(label: ErrLabel): functions.https.HttpsError {
+  const e = AUTH_ERR[label];
+  return new functions.https.HttpsError(e.code, e.en, { messageAr: e.ar });
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 function generateOtp(): string {
   // crypto.randomInt is cryptographically secure; Math.random() is not.
@@ -137,10 +196,7 @@ async function callUnifonic(phone: string, body: string): Promise<void> {
       status: res.status,
       body: text,
     });
-    throw new functions.https.HttpsError(
-      'internal',
-      'Could not send OTP. Please try again.'
-    );
+    throw authError('sendFailed');
   }
 }
 
@@ -151,10 +207,7 @@ export const sendOtp = functions
     const phone = normalizePhone(data?.phoneNumber || '');
 
     if (!isValidSaudiPhone(phone)) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'Please enter a valid Saudi mobile number (+966 5XX XXX XXXX).'
-      );
+      throw authError('invalidPhone');
     }
 
     // Rate-limit: count send-attempts in the last 15 minutes for this phone.
@@ -168,10 +221,7 @@ export const sendOtp = functions
       .get();
 
     if (recentSnap.size >= MAX_ATTEMPTS_PER_WINDOW) {
-      throw new functions.https.HttpsError(
-        'resource-exhausted',
-        'Too many attempts. Please try again in 15 minutes.'
-      );
+      throw authError('tooManySends');
     }
 
     const code = generateOtp();
@@ -205,16 +255,10 @@ export const verifyOtp = functions
       const code = (data?.code || '').replace(/\s/g, '');
 
       if (!isValidSaudiPhone(phone)) {
-        throw new functions.https.HttpsError(
-          'invalid-argument',
-          'Invalid phone number.'
-        );
+        throw authError('invalidPhone');
       }
       if (!/^\d{6}$/.test(code)) {
-        throw new functions.https.HttpsError(
-          'invalid-argument',
-          'OTP must be 6 digits.'
-        );
+        throw authError('invalidCodeFormat');
       }
 
       // Find the latest unverified attempt within TTL.
@@ -229,20 +273,14 @@ export const verifyOtp = functions
         .get();
 
       if (snap.empty) {
-        throw new functions.https.HttpsError(
-          'failed-precondition',
-          'No active OTP. Please request a new code.'
-        );
+        throw authError('noActiveOtp');
       }
 
       const doc = snap.docs[0];
       const attempt = doc.data();
 
       if ((attempt.verifyAttempts || 0) >= MAX_VERIFY_ATTEMPTS) {
-        throw new functions.https.HttpsError(
-          'resource-exhausted',
-          'Too many wrong codes. Request a new OTP.'
-        );
+        throw authError('tooManyVerifies');
       }
 
       const matches = await verifyHash(code, attempt.codeHash);
@@ -251,10 +289,7 @@ export const verifyOtp = functions
         await doc.ref.update({
           verifyAttempts: admin.firestore.FieldValue.increment(1),
         });
-        throw new functions.https.HttpsError(
-          'permission-denied',
-          'Wrong code. Please try again.'
-        );
+        throw authError('wrongCode');
       }
 
       // Mark verified.

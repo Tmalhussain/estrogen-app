@@ -104,6 +104,10 @@ export const catalogSync = functions
   .timeZone('Asia/Riyadh')
   .onRun(async () => {
     const apiUrl = functions.config().catalog?.api_url as string | undefined;
+    const apiKey = functions.config().catalog?.api_key as string | undefined;
+    const apiKeyHeader =
+      (functions.config().catalog?.api_key_header as string | undefined) ||
+      'Authorization';
     const isEmulator = !!process.env.FUNCTIONS_EMULATOR;
 
     if (!apiUrl) {
@@ -122,7 +126,19 @@ export const catalogSync = functions
       // 60s hard timeout. Without this, a hung upstream catalog API holds the
       // function for the full 300s timeoutSeconds limit before the runtime kills
       // it. Failing fast lets the next-day cron retry on a fresh attempt.
+      //
+      // Auth header is optional. If catalog.api_key is set:
+      //   - Authorization header gets `Bearer <key>` by default
+      //   - Override the header name via catalog.api_key_header (e.g. 'X-API-Key')
+      //     and we'll send the raw key, not a Bearer prefix.
+      const headers: Record<string, string> = { Accept: 'application/json' };
+      if (apiKey) {
+        headers[apiKeyHeader] =
+          apiKeyHeader === 'Authorization' ? `Bearer ${apiKey}` : apiKey;
+      }
+
       const res = await fetch(apiUrl, {
+        headers,
         signal: AbortSignal.timeout(60_000),
       });
       if (!res.ok) {
@@ -154,14 +170,18 @@ export const catalogSync = functions
 
     const fetched = rawItems.length;
     let upserted = 0;
-    let errored = 0;
+    // Separate counters: per-item validation rejections vs per-batch
+    // write failures. Conflating them in a single 'errored' field hid
+    // whether a sync was failing at parse time vs commit time.
+    let invalidItems = 0;
+    let writeFailures = 0;
 
     // Validate + map each item, bucketing into upsertable products.
     const products: MappedProduct[] = [];
     for (const raw of rawItems) {
       const result = mapToProduct(raw);
       if ('error' in result) {
-        errored += 1;
+        invalidItems += 1;
         functions.logger.warn(`catalogSync skipped item: ${result.error}`);
         continue;
       }
@@ -203,16 +223,30 @@ export const catalogSync = functions
         batch.set(db.doc(`products/${p.id}`), scoped, { merge: true });
       }
 
-      try {
-        await batch.commit();
-        upserted += chunk.length;
-      } catch (err) {
-        errored += chunk.length;
+      // Single retry on transient batch failure with a 1-sec backoff.
+      // Firestore batches are atomic, so a failure means none of the
+      // chunk wrote — counting `chunk.length` as failures is accurate.
+      let committed = false;
+      let lastErr: unknown;
+      for (let attempt = 0; attempt < 2 && !committed; attempt++) {
+        try {
+          if (attempt > 0) {
+            await new Promise((r) => setTimeout(r, 1_000));
+          }
+          await batch.commit();
+          committed = true;
+          upserted += chunk.length;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      if (!committed) {
+        writeFailures += chunk.length;
         functions.logger.error(
-          `catalogSync batch commit failed (chunk starting at ${i}, ${chunk.length} items)`,
-          err
+          `catalogSync batch commit failed after retry (chunk starting at ${i}, ${chunk.length} items)`,
+          lastErr
         );
-        // Continue with the next batch.
+        // Continue with the next batch — daily cron picks up tomorrow.
       }
     }
 
@@ -222,7 +256,8 @@ export const catalogSync = functions
           lastSyncedAt: FieldValue.serverTimestamp(),
           fetched,
           upserted,
-          errored,
+          invalidItems,
+          writeFailures,
         },
         { merge: true }
       );
@@ -231,7 +266,8 @@ export const catalogSync = functions
     }
 
     functions.logger.info(
-      `catalogSync run: fetched=${fetched} upserted=${upserted} errored=${errored}`
+      `catalogSync run: fetched=${fetched} upserted=${upserted} ` +
+        `invalidItems=${invalidItems} writeFailures=${writeFailures}`
     );
     return null;
   });

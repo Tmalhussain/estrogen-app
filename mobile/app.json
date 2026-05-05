@@ -7,13 +7,17 @@
     "scheme": "estrogen",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "icon": "./assets/images/logo.jpeg",
     "splash": {
-      "backgroundColor": "#FAF3EC"
+      "image": "./assets/images/logo.jpeg",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "sa.estrogen.pharmacy",
       "buildNumber": "1",
+      "icon": "./assets/images/logo.jpeg",
       "infoPlist": {
         "NSCameraUsageDescription": "نحتاج إلى الكاميرا لالتقاط صور الوصفات الطبية",
         "NSPhotoLibraryUsageDescription": "نحتاج إلى الصور لرفع الوصفات الطبية",
@@ -26,7 +30,8 @@
       "package": "sa.estrogen.pharmacy",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#FAF3EC"
+        "foregroundImage": "./assets/images/logo.jpeg",
+        "backgroundColor": "#FFFFFF"
       },
       "permissions": [
         "CAMERA",
@@ -34,7 +39,8 @@
       ]
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/images/logo.jpeg"
     },
     "plugins": [
       "expo-router",
