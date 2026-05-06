@@ -163,6 +163,35 @@ export const api = {
   },
   getProduct: (id: string) => request<{ product: ApiProduct }>(`/products/${id}`),
 
+  /**
+   * Resolve a scanned EAN-13 / UPC barcode. The server enforces the Rx
+   * gate, so callers always include their JWT when they have one — that
+   * way a scanned Rx pack the user is prescribed for resolves cleanly,
+   * and one they aren't returns 403 prescription_required.
+   */
+  productByBarcode: (code: string, token: string | null) =>
+    request<{
+      product: ApiProduct;
+      requiresPrescription: boolean;
+      hasPrescription: boolean;
+    }>(`/products/by-barcode/${encodeURIComponent(code)}`, { token }),
+
+  myPrescriptions: (token: string) =>
+    request<{
+      prescriptions: {
+        id: string;
+        productId: string;
+        status: 'pending_review' | 'approved' | 'rejected' | 'expired';
+        prescribedBy: string | null;
+        approvedAt: string | null;
+        expiresAt: string | null;
+        createdAt: string;
+        productName: string | null;
+        productNameAr: string | null;
+        productImage: string | null;
+      }[];
+    }>('/prescriptions/mine', { token }),
+
   listOrders: (token: string) =>
     request<{ orders: ApiOrder[] }>('/orders', { token }),
   getOrder: (id: string, token: string) =>

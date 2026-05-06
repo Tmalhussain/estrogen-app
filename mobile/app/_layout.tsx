@@ -149,6 +149,14 @@ function RootStack() {
         name="order/[id]"
         options={{ presentation: 'card', animation: 'slide_from_right' }}
       />
+      <Stack.Screen
+        name="scan"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: '#000' },
+        }}
+      />
     </Stack>
   );
 }

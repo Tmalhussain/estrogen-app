@@ -102,12 +102,58 @@ export const products = sqliteTable(
     pharmacistNote: text('pharmacist_note'),
     tags: text('tags', { mode: 'json' }).$type<string[]>().notNull().default([]),
     sku: text('sku').unique(),
+    // Retail barcode (EAN-13 / UPC-A). Used by the mobile scan flow to
+    // resolve a physical pack to a product row. Unique when set; null is
+    // allowed for items without a printed barcode.
+    barcode: text('barcode').unique(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => ({
     categoryIdx: index('products_category_idx').on(t.category),
     inStockIdx: index('products_in_stock_idx').on(t.inStock),
+    barcodeIdx: index('products_barcode_idx').on(t.barcode),
+  })
+);
+
+/**
+ * A pharmacist-approved prescription that unlocks one Rx-required product
+ * for one user. Status starts at `pending_review` when the customer
+ * uploads, transitions to `approved` (rx unlocks) or `rejected` after
+ * pharmacist review. `expiresAt` tracks when the prescription is no
+ * longer valid (typically 6-12 months from the prescriber's date).
+ */
+export const prescriptions = sqliteTable(
+  'prescriptions',
+  {
+    id: id(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    productId: text('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'restrict' }),
+    status: text('status', {
+      enum: ['pending_review', 'approved', 'rejected', 'expired'],
+    })
+      .notNull()
+      .default('pending_review'),
+    imagePath: text('image_path'),
+    prescribedBy: text('prescribed_by'),
+    notes: text('notes'),
+    approvedAt: integer('approved_at', { mode: 'timestamp_ms' }),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    userIdx: index('prescriptions_user_idx').on(t.userId),
+    productIdx: index('prescriptions_product_idx').on(t.productId),
+    userProductStatusIdx: index('prescriptions_user_product_status_idx').on(
+      t.userId,
+      t.productId,
+      t.status
+    ),
   })
 );
 
@@ -203,6 +249,7 @@ export const stockMovements = sqliteTable(
 export type User = typeof users.$inferSelect;
 export type OtpAttempt = typeof otpAttempts.$inferSelect;
 export type Product = typeof products.$inferSelect;
+export type Prescription = typeof prescriptions.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;

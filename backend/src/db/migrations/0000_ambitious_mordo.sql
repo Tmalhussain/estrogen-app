@@ -53,6 +53,25 @@ CREATE TABLE `otp_attempts` (
 --> statement-breakpoint
 CREATE INDEX `otp_attempts_phone_idx` ON `otp_attempts` (`phone_number`);--> statement-breakpoint
 CREATE INDEX `otp_attempts_created_idx` ON `otp_attempts` (`created_at`);--> statement-breakpoint
+CREATE TABLE `prescriptions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`product_id` text NOT NULL,
+	`status` text DEFAULT 'pending_review' NOT NULL,
+	`image_path` text,
+	`prescribed_by` text,
+	`notes` text,
+	`approved_at` integer,
+	`expires_at` integer,
+	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON UPDATE no action ON DELETE restrict
+);
+--> statement-breakpoint
+CREATE INDEX `prescriptions_user_idx` ON `prescriptions` (`user_id`);--> statement-breakpoint
+CREATE INDEX `prescriptions_product_idx` ON `prescriptions` (`product_id`);--> statement-breakpoint
+CREATE INDEX `prescriptions_user_product_status_idx` ON `prescriptions` (`user_id`,`product_id`,`status`);--> statement-breakpoint
 CREATE TABLE `products` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -73,13 +92,16 @@ CREATE TABLE `products` (
 	`pharmacist_note` text,
 	`tags` text DEFAULT '[]' NOT NULL,
 	`sku` text,
+	`barcode` text,
 	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch() * 1000) NOT NULL
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `products_sku_unique` ON `products` (`sku`);--> statement-breakpoint
+CREATE UNIQUE INDEX `products_barcode_unique` ON `products` (`barcode`);--> statement-breakpoint
 CREATE INDEX `products_category_idx` ON `products` (`category`);--> statement-breakpoint
 CREATE INDEX `products_in_stock_idx` ON `products` (`in_stock`);--> statement-breakpoint
+CREATE INDEX `products_barcode_idx` ON `products` (`barcode`);--> statement-breakpoint
 CREATE TABLE `stock_movements` (
 	`id` text PRIMARY KEY NOT NULL,
 	`product_id` text NOT NULL,

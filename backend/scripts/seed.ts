@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db, schema } from '../src/db/index.ts';
 import { hashPassword } from '../src/lib/passwords.ts';
 import { hashApiKey } from '../src/lib/api-key.ts';
@@ -6,6 +6,7 @@ import { hashApiKey } from '../src/lib/api-key.ts';
 const products: (typeof schema.products.$inferInsert)[] = [
   {
     sku: 'EST-FOL-5MG-60',
+    barcode: '6281234500001',
     name: 'Folic Acid 5mg',
     nameAr: 'حمض الفوليك ٥ مغ',
     brand: 'Centrum',
@@ -27,6 +28,7 @@ const products: (typeof schema.products.$inferInsert)[] = [
   },
   {
     sku: 'EST-FE-VC-30',
+    barcode: '6281234500002',
     name: 'Iron + Vitamin C',
     nameAr: 'حديد + فيتامين C',
     brand: 'FerroPlus',
@@ -47,6 +49,7 @@ const products: (typeof schema.products.$inferInsert)[] = [
   },
   {
     sku: 'EST-LEV-50-100',
+    barcode: '6281234500003',
     name: 'Levothyroxine 50mcg',
     nameAr: 'ليفوثيروكسين ٥٠ مكغ',
     brand: 'Eltroxin',
@@ -68,6 +71,7 @@ const products: (typeof schema.products.$inferInsert)[] = [
   },
   {
     sku: 'EST-VITD3-5K-90',
+    barcode: '6281234500004',
     name: 'Vitamin D3 5000 IU',
     nameAr: 'فيتامين D3 ٥٠٠٠ وحدة',
     brand: 'Nordic Naturals',
@@ -87,6 +91,7 @@ const products: (typeof schema.products.$inferInsert)[] = [
   },
   {
     sku: 'EST-HA-30',
+    barcode: '6281234500005',
     name: 'Hyaluronic Serum',
     nameAr: 'سيروم حمض الهيالورونيك',
     brand: 'La Roche-Posay',
@@ -106,6 +111,7 @@ const products: (typeof schema.products.$inferInsert)[] = [
   },
   {
     sku: 'EST-MEF-500-20',
+    barcode: '6281234500006',
     name: 'Mefenamic Acid 500mg',
     nameAr: 'حمض الميفيناميك ٥٠٠ مغ',
     brand: 'Ponstan',
@@ -126,6 +132,7 @@ const products: (typeof schema.products.$inferInsert)[] = [
   },
   {
     sku: 'EST-PRE-MV-60',
+    barcode: '6281234500007',
     name: 'Prenatal Multivitamin',
     nameAr: 'فيتامينات ما قبل الولادة',
     brand: 'Garden of Life',
@@ -145,6 +152,7 @@ const products: (typeof schema.products.$inferInsert)[] = [
   },
   {
     sku: 'EST-PARA-500-24',
+    barcode: '6281234500008',
     name: 'Paracetamol 500mg',
     nameAr: 'باراسيتامول ٥٠٠ مغ',
     brand: 'Panadol',
@@ -163,6 +171,7 @@ const products: (typeof schema.products.$inferInsert)[] = [
   },
   {
     sku: 'EST-MET-500-60',
+    barcode: '6281234500009',
     name: 'Metformin 500mg',
     nameAr: 'ميتفورمين ٥٠٠ مغ',
     brand: 'Glucophage',
@@ -258,4 +267,49 @@ if (demoUser.length === 0) {
   console.log(`created demo phone-only user ${demoPhone}`);
 } else {
   console.log('demo phone user already present');
+}
+
+// Approved prescription for the demo user covering Levothyroxine. Lets us
+// exercise the "scanned a Rx pack — caller is prescribed — unlock" path
+// without standing up the full pharmacist review workflow yet. Metformin
+// stays NOT-prescribed so the "blocked, needs prescription" path is also
+// reachable from the same demo session.
+const [demoUserRow] = db
+  .select({ id: schema.users.id })
+  .from(schema.users)
+  .where(eq(schema.users.phoneNumber, demoPhone))
+  .all();
+const [levothyroxine] = db
+  .select({ id: schema.products.id })
+  .from(schema.products)
+  .where(eq(schema.products.sku, 'EST-LEV-50-100'))
+  .all();
+if (demoUserRow && levothyroxine) {
+  const existingRx = db
+    .select({ id: schema.prescriptions.id })
+    .from(schema.prescriptions)
+    .where(
+      and(
+        eq(schema.prescriptions.userId, demoUserRow.id),
+        eq(schema.prescriptions.productId, levothyroxine.id)
+      )
+    )
+    .all();
+  if (existingRx.length === 0) {
+    const inAYear = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    db.insert(schema.prescriptions)
+      .values({
+        userId: demoUserRow.id,
+        productId: levothyroxine.id,
+        status: 'approved',
+        prescribedBy: 'Dr. Hala A. — Endocrinology',
+        approvedAt: new Date(),
+        expiresAt: inAYear,
+        notes: 'Seed: demo prescription for testing the Rx-gated scan flow.',
+      })
+      .run();
+    console.log(`created approved prescription for demo user → Levothyroxine`);
+  } else {
+    console.log('demo prescription already present');
+  }
 }

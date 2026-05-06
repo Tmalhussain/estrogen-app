@@ -76,14 +76,23 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
-          <Pressable
-            style={styles.iconBtn}
-            onPress={() => router.push('/profile')}
-            accessibilityLabel="Notifications"
-          >
-            <Ionicons name="notifications-outline" size={22} color={colors.text} />
-            <View style={styles.iconDot} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={() => router.push('/scan')}
+              accessibilityLabel="Scan a barcode"
+            >
+              <Ionicons name="barcode-outline" size={22} color={colors.text} />
+            </Pressable>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={() => router.push('/profile')}
+              accessibilityLabel="Notifications"
+            >
+              <Ionicons name="notifications-outline" size={22} color={colors.text} />
+              <View style={styles.iconDot} />
+            </Pressable>
+          </View>
         </View>
 
         <Pressable
@@ -232,6 +241,11 @@ const styles = StyleSheet.create({
     fontFamily: font.family.bold,
     fontWeight: font.weight.bold,
     letterSpacing: -0.3,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
   },
   iconBtn: {
     width: 44,
