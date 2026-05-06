@@ -1,71 +1,50 @@
 {
   "expo": {
-    "name": "صيدلية إستروجين",
-    "slug": "estrogen-pharmacy",
+    "name": "Estrogen",
+    "slug": "estrogen",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
     "scheme": "estrogen",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "icon": "./assets/images/logo.jpeg",
     "splash": {
-      "image": "./assets/images/logo.jpeg",
+      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "sa.estrogen.pharmacy",
-      "buildNumber": "1",
-      "icon": "./assets/images/logo.jpeg",
-      "infoPlist": {
-        "NSCameraUsageDescription": "نحتاج إلى الكاميرا لالتقاط صور الوصفات الطبية",
-        "NSPhotoLibraryUsageDescription": "نحتاج إلى الصور لرفع الوصفات الطبية",
-        "NSFaceIDUsageDescription": "يُستخدم Face ID لتأمين حسابكِ",
-        "CFBundleAllowMixedLocalizations": true,
-        "CFBundleDevelopmentRegion": "ar"
-      }
+      "supportsTablet": true,
+      "bundleIdentifier": "sa.almishari.estrogen"
     },
     "android": {
-      "package": "sa.estrogen.pharmacy",
-      "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo.jpeg",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE"
-      ]
+      "package": "sa.almishari.estrogen",
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/images/logo.jpeg"
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
       "expo-font",
       [
-        "expo-image-picker",
+        "expo-splash-screen",
         {
-          "photosPermission": "نحتاج إلى الصور لرفع الوصفات الطبية",
-          "cameraPermission": "نحتاج إلى الكاميرا لالتقاط صور الوصفات الطبية"
-        }
-      ],
-      [
-        "expo-local-authentication",
-        {
-          "faceIDPermission": "يُستخدم Face ID لتأمين حسابكِ"
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "extra": {
-      "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
-      }
     }
   }
 }
