@@ -38,6 +38,11 @@ export default function VerifyScreen() {
   const [resendCountdown, setResendCountdown] = useState(RESEND_AFTER_SEC);
   const [resending, setResending] = useState(false);
   const inputRef = useRef<TextInput | null>(null);
+  // Ref guard so the auto-submit useEffect can't double-fire while the
+  // first verify-otp request is still in flight. setSubmitting(true) is
+  // batched by React; checking it inside the effect doesn't catch a
+  // synchronous re-render race.
+  const inFlight = useRef(false);
 
   useEffect(() => {
     if (resendCountdown <= 0) return;
@@ -48,6 +53,8 @@ export default function VerifyScreen() {
   const submit = async () => {
     if (code.length !== 6) return;
     if (needsName && !firstName.trim()) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setError(null);
     setSubmitting(true);
     try {
@@ -57,8 +64,6 @@ export default function VerifyScreen() {
         firstName: firstName.trim() || undefined,
       });
       router.replace('/(tabs)');
-      // Toast-equivalent left to a global system; isNewUser available for
-      // analytics if we want to fire a "signup_completed" event later.
       void isNewUser;
     } catch (err) {
       setError(translate(err, code));
@@ -70,6 +75,7 @@ export default function VerifyScreen() {
       }
     } finally {
       setSubmitting(false);
+      inFlight.current = false;
     }
   };
 

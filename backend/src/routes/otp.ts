@@ -26,29 +26,41 @@ otpRoutes.post('/send-otp', async (c) => {
   if (!phone) return c.json({ error: 'invalid_phone_number' }, 400);
 
   const since = new Date(Date.now() - SEND_WINDOW_SEC * 1000);
-  const recent = await db
-    .select({ id: schema.otpAttempts.id })
-    .from(schema.otpAttempts)
-    .where(
-      and(
-        eq(schema.otpAttempts.phoneNumber, phone),
-        gte(schema.otpAttempts.createdAt, since)
-      )
-    );
-  if (recent.length >= MAX_SENDS_PER_WINDOW)
-    return c.json({ error: 'too_many_sends', retryAfterSec: SEND_WINDOW_SEC }, 429);
-
   const code = generateOtpCode();
   const expiresAt = new Date(Date.now() + OTP_TTL_SEC * 1000);
-  await db.insert(schema.otpAttempts).values({
-    phoneNumber: phone,
-    codeHash: hashCode(code),
-    expiresAt,
-    ip:
-      c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ||
-      c.req.header('x-real-ip') ||
-      null,
+  const ip =
+    c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ||
+    c.req.header('x-real-ip') ||
+    null;
+
+  // Rate-limit check + insert in one transaction so two concurrent
+  // /send-otp calls can't both pass the count and both insert.
+  type Outcome = 'ok' | 'rate_limited';
+  const outcome: Outcome = db.transaction((tx) => {
+    const recent = tx
+      .select({ id: schema.otpAttempts.id })
+      .from(schema.otpAttempts)
+      .where(
+        and(
+          eq(schema.otpAttempts.phoneNumber, phone),
+          gte(schema.otpAttempts.createdAt, since)
+        )
+      )
+      .all();
+    if (recent.length >= MAX_SENDS_PER_WINDOW) return 'rate_limited';
+    tx.insert(schema.otpAttempts)
+      .values({
+        phoneNumber: phone,
+        codeHash: hashCode(code),
+        expiresAt,
+        ip,
+      })
+      .run();
+    return 'ok';
   });
+
+  if (outcome === 'rate_limited')
+    return c.json({ error: 'too_many_sends', retryAfterSec: SEND_WINDOW_SEC }, 429);
 
   const sms = `Estrogen Pharmacy: ${code} | إستروجين: رمز التحقق ${code}`;
   try {

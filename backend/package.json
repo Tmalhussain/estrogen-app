@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "main": "dist/cloudFunction.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
@@ -11,7 +12,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "rm -f data.db && npm run db:migrate && npm run db:seed",
     "key:create": "tsx scripts/create-api-key.ts",
-    "tsc": "tsc --noEmit"
+    "tsc": "tsc --noEmit",
+    "build:functions": "esbuild src/cloudFunction.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/cloudFunction.js --external:better-sqlite3 --external:firebase-admin --external:firebase-functions --external:postgres --external:hono --external:@hono/node-server --external:drizzle-orm --external:jose"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.1",
@@ -27,6 +29,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.0.0",
     "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.25.0",
     "tsx": "^4.21.0",
     "typescript": "~5.9.0"
   }

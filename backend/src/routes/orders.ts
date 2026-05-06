@@ -139,8 +139,10 @@ orderRoutes.post('/', async (c) => {
   const vat = Math.round((subtotal + deliveryFee) * VAT_RATE);
   const total = subtotal + deliveryFee + vat;
 
-  const order = db.transaction((insert) => {
-    const [created] = insert
+  let order;
+  try {
+    order = db.transaction((tx) => {
+    const [created] = tx
       .insert(schema.orders)
       .values({
         userId: claims.sub,
@@ -157,18 +159,33 @@ orderRoutes.post('/', async (c) => {
       .all();
 
     for (const row of orderItemRows) {
-      insert
+      tx
         .insert(schema.orderItems)
         .values({ orderId: created.id, ...row })
         .run();
-      const product = productMap.get(row.productId)!;
-      const after = product.stockCount - row.quantity;
-      insert
+      // Re-read stock inside the transaction so concurrent placements
+      // can't both decrement from the same stale value (lost-update race).
+      // If another order already drained the inventory between the outer
+      // check and this transaction we surface that as a 409 by throwing.
+      const [fresh] = tx
+        .select({ stockCount: schema.products.stockCount })
+        .from(schema.products)
+        .where(eq(schema.products.id, row.productId))
+        .all();
+      if (!fresh || fresh.stockCount < row.quantity) {
+        throw Object.assign(new Error('insufficient_stock'), {
+          status: 409,
+          productId: row.productId,
+          available: fresh?.stockCount ?? 0,
+        });
+      }
+      const after = fresh.stockCount - row.quantity;
+      tx
         .update(schema.products)
         .set({ stockCount: after, inStock: after > 0, updatedAt: new Date() })
         .where(eq(schema.products.id, row.productId))
         .run();
-      insert
+      tx
         .insert(schema.stockMovements)
         .values({
           productId: row.productId,
@@ -181,7 +198,21 @@ orderRoutes.post('/', async (c) => {
     }
 
     return created;
-  });
+    });
+  } catch (err) {
+    const e = err as Error & { status?: number };
+    if (e.status === 409) {
+      return c.json(
+        {
+          error: e.message,
+          productId: (e as unknown as { productId: string }).productId,
+          available: (e as unknown as { available: number }).available,
+        },
+        409
+      );
+    }
+    throw err;
+  }
 
   return c.json({ order });
 });

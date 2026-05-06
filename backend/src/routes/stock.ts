@@ -96,10 +96,25 @@ stockRoutes.post('/update', requireApiKey('stock:update'), async (c) => {
 
   type AppliedLine = { productId: string; before: number; after: number; delta: number };
   try {
-    const applied = db.transaction((insert) => {
+    const applied = db.transaction((tx) => {
       const out: AppliedLine[] = [];
       for (const { product, line } of resolved) {
-        const before = product.stockCount;
+        // Re-read inside the transaction. Without this, two concurrent
+        // updates can both compute `after` from the same stale `before`
+        // (lost-update race) — last writer wins and one sale silently
+        // disappears.
+        const [fresh] = tx
+          .select({ stockCount: schema.products.stockCount })
+          .from(schema.products)
+          .where(eq(schema.products.id, product.id))
+          .all();
+        if (!fresh) {
+          throw Object.assign(new Error('product_not_found'), {
+            status: 404,
+            productId: product.id,
+          });
+        }
+        const before = fresh.stockCount;
         const after =
           typeof line.absolute === 'number'
             ? line.absolute
@@ -113,12 +128,12 @@ stockRoutes.post('/update', requireApiKey('stock:update'), async (c) => {
           });
         }
         const delta = after - before;
-        insert
+        tx
           .update(schema.products)
           .set({ stockCount: after, inStock: after > 0, updatedAt: new Date() })
           .where(eq(schema.products.id, product.id))
           .run();
-        insert
+        tx
           .insert(schema.stockMovements)
           .values({
             productId: product.id,
