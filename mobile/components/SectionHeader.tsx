@@ -37,6 +37,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: font.size.xl,
     color: colors.text,
+    fontFamily: font.family.bold,
     fontWeight: font.weight.bold,
     letterSpacing: -0.4,
   },

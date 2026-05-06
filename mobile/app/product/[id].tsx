@@ -255,6 +255,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: font.size.xxl,
     color: colors.text,
+    fontFamily: font.family.bold,
     fontWeight: font.weight.bold,
     letterSpacing: -0.4,
     marginTop: 2,
@@ -263,7 +264,9 @@ const styles = StyleSheet.create({
     fontSize: font.size.lg,
     color: colors.accent,
     marginTop: 4,
-    fontWeight: font.weight.semi,
+    fontFamily: font.family.arBold,
+    fontWeight: font.weight.bold,
+    writingDirection: 'rtl',
   },
   unit: {
     fontSize: font.size.sm,

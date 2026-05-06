@@ -229,6 +229,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: font.size.lg,
     color: colors.text,
+    fontFamily: font.family.bold,
     fontWeight: font.weight.bold,
     letterSpacing: -0.3,
   },
@@ -298,6 +299,7 @@ const styles = StyleSheet.create({
   bannerTitle: {
     fontSize: font.size.xl,
     color: colors.onPrimary,
+    fontFamily: font.family.bold,
     fontWeight: font.weight.bold,
     marginTop: 4,
     letterSpacing: -0.4,

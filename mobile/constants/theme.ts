@@ -83,6 +83,15 @@ export const space = {
 } as const;
 
 export const font = {
+  family: {
+    regular: 'DMSans_400Regular',
+    medium: 'DMSans_500Medium',
+    semi: 'DMSans_600SemiBold',
+    bold: 'DMSans_700Bold',
+    arRegular: 'Tajawal_400Regular',
+    arMedium: 'Tajawal_500Medium',
+    arBold: 'Tajawal_700Bold',
+  },
   size: {
     xxs: 11,
     xs: 12,

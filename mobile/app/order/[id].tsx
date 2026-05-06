@@ -283,6 +283,7 @@ const styles = StyleSheet.create({
   statusTitle: {
     fontSize: font.size.xxl,
     color: colors.text,
+    fontFamily: font.family.bold,
     fontWeight: font.weight.bold,
     letterSpacing: -0.4,
     marginTop: 4,
