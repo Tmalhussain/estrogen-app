@@ -59,8 +59,18 @@ otpRoutes.post('/send-otp', async (c) => {
     return 'ok';
   });
 
-  if (outcome === 'rate_limited')
-    return c.json({ error: 'too_many_sends', retryAfterSec: SEND_WINDOW_SEC }, 429);
+  if (outcome === 'rate_limited') {
+    c.header('Retry-After', String(SEND_WINDOW_SEC));
+    return c.json(
+      {
+        error: 'too_many_sends',
+        retryAfterSec: SEND_WINDOW_SEC,
+        message:
+          'Too many OTP requests for this number. Please wait the retryAfterSec window before trying again.',
+      },
+      429
+    );
+  }
 
   const sms = `Estrogen Pharmacy: ${code} | إستروجين: رمز التحقق ${code}`;
   try {
@@ -105,8 +115,16 @@ otpRoutes.post('/verify-otp', async (c) => {
 
   if (!attempt || attempt.verifiedAt)
     return c.json({ error: 'no_active_otp' }, 410);
-  if (attempt.verifyAttempts >= MAX_VERIFY_ATTEMPTS)
-    return c.json({ error: 'too_many_verify_attempts' }, 429);
+  if (attempt.verifyAttempts >= MAX_VERIFY_ATTEMPTS) {
+    c.header('Retry-After', String(OTP_TTL_SEC));
+    return c.json(
+      {
+        error: 'too_many_verify_attempts',
+        message: 'Too many wrong codes. Request a new OTP via /auth/send-otp.',
+      },
+      429
+    );
+  }
 
   const matches = verifyHashedCode(code, attempt.codeHash);
   if (!matches) {

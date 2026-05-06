@@ -56,15 +56,38 @@ stockRoutes.post('/update', requireApiKey('stock:update'), async (c) => {
   const lines = updates as Line[];
 
   for (const [i, l] of lines.entries()) {
-    if (!l || typeof l !== 'object') return c.json({ error: 'invalid_line', i }, 400);
+    if (!l || typeof l !== 'object')
+      return c.json({ error: 'invalid_line', index: i }, 400);
     if (!l.productId && !l.sku)
-      return c.json({ error: 'line_missing_identifier', i }, 400);
+      return c.json(
+        {
+          error: 'line_missing_identifier',
+          index: i,
+          message: 'Each update line needs either `productId` or `sku`.',
+        },
+        400
+      );
     const hasDelta = typeof l.delta === 'number';
     const hasAbsolute = typeof l.absolute === 'number';
     if (hasDelta === hasAbsolute)
-      return c.json({ error: 'line_needs_delta_xor_absolute', i }, 400);
+      return c.json(
+        {
+          error: 'line_needs_delta_xor_absolute',
+          index: i,
+          message:
+            'Each line must specify exactly one of `delta` (signed integer) or `absolute` (non-negative integer).',
+        },
+        400
+      );
     if (hasAbsolute && l.absolute! < 0)
-      return c.json({ error: 'line_absolute_negative', i }, 400);
+      return c.json(
+        {
+          error: 'line_absolute_negative',
+          index: i,
+          message: '`absolute` must be a non-negative integer.',
+        },
+        400
+      );
   }
 
   const ids = lines.flatMap((l) => (l.productId ? [l.productId] : []));
@@ -150,14 +173,31 @@ stockRoutes.post('/update', requireApiKey('stock:update'), async (c) => {
     });
     return c.json({ ok: true, applied });
   } catch (err) {
-    const e = err as Error & { status?: number };
+    const e = err as Error & {
+      status?: number;
+      productId?: string;
+      before?: number;
+      requested?: number;
+    };
     if (e.status === 409) {
       return c.json(
         {
           error: e.message,
-          productId: (e as unknown as { productId: string }).productId,
+          productId: e.productId,
+          before: e.before,
+          requested: e.requested,
+          message:
+            e.message === 'stock_would_go_negative'
+              ? `Current stock is ${e.before}; the requested change would set it to ${e.requested}.`
+              : undefined,
         },
         409
+      );
+    }
+    if (e.status === 404) {
+      return c.json(
+        { error: 'product_not_found', productId: e.productId },
+        404
       );
     }
     throw err;
