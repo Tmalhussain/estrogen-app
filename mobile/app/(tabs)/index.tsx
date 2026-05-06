@@ -16,7 +16,7 @@ import { Logo } from '@/components/Logo';
 import { ProductCard } from '@/components/ProductCard';
 import { CategoryTile } from '@/components/CategoryTile';
 import { SectionHeader } from '@/components/SectionHeader';
-import { categories, products } from '@/data/products';
+import { categories, lifeStages, products } from '@/data/products';
 import { colors, font, radius, shadow, space } from '@/constants/theme';
 
 const HERO_BANNERS = [
@@ -136,7 +136,30 @@ export default function HomeScreen() {
       </ScrollView>
 
       <View style={styles.section}>
-        <SectionHeader title="Shop by category" />
+        <SectionHeader title="Shop by life stage" />
+        <View style={styles.stageGrid}>
+          {lifeStages.map((s) => (
+            <Pressable
+              key={s.id}
+              style={({ pressed }) => [
+                styles.stageCard,
+                pressed && { opacity: 0.85 },
+              ]}
+              onPress={() => router.push(`/shop?stage=${s.id}` as never)}
+              accessibilityLabel={`Shop for ${s.label}`}
+            >
+              <View style={styles.stageIcon}>
+                <Ionicons name={s.icon} size={24} color={colors.primary} />
+              </View>
+              <Text style={styles.stageCardLabel}>{s.label}</Text>
+              <Text style={styles.stageCardAge}>{s.ageRange}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <SectionHeader title="Shop by type" />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -335,6 +358,46 @@ const styles = StyleSheet.create({
   catRow: {
     paddingHorizontal: space.lg,
     gap: space.md,
+  },
+  stageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: space.lg,
+    gap: space.sm,
+  },
+  stageCard: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    minHeight: 96,
+    paddingVertical: space.md,
+    paddingHorizontal: space.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.bgAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  stageIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primaryDim,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.xs,
+  },
+  stageCardLabel: {
+    fontSize: font.size.md,
+    color: colors.text,
+    fontFamily: font.family.bold,
+    fontWeight: font.weight.bold,
+  },
+  stageCardAge: {
+    fontSize: font.size.xs,
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
   },
   deliveryCard: {
     flexDirection: 'row',

@@ -347,6 +347,7 @@ function apiToCartProduct(p: ApiProduct): import('@/data/products').Product {
     nameAr: p.nameAr,
     brand: p.brand,
     category: (p.category as never) ?? 'vitamins',
+    lifeStage: 'lady',
     price: p.price,
     oldPrice: p.oldPrice ?? undefined,
     unit: p.unit,

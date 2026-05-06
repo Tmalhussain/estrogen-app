@@ -14,30 +14,36 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProductCard } from '@/components/ProductCard';
 import {
   Category,
+  LifeStage,
   categories,
+  lifeStages,
   products,
   searchProducts,
 } from '@/data/products';
 import { colors, font, radius, space } from '@/constants/theme';
 
-type Filter = Category | 'all';
+type TypeFilter = Category | 'all';
+type StageFilter = LifeStage | 'all';
 
 export default function ShopScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ category?: string }>();
-  const initial = (params.category as Filter | undefined) ?? 'all';
-  const [filter, setFilter] = useState<Filter>(initial);
+  const params = useLocalSearchParams<{ category?: string; stage?: string }>();
+  const initialType = (params.category as TypeFilter | undefined) ?? 'all';
+  const initialStage = (params.stage as StageFilter | undefined) ?? 'all';
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>(initialType);
+  const [stageFilter, setStageFilter] = useState<StageFilter>(initialStage);
   const [query, setQuery] = useState('');
   const [showRxOnly, setShowRxOnly] = useState(false);
   const [showInStock, setShowInStock] = useState(false);
 
   const filtered = useMemo(() => {
     let list = query ? searchProducts(query) : products;
-    if (filter !== 'all') list = list.filter((p) => p.category === filter);
+    if (stageFilter !== 'all') list = list.filter((p) => p.lifeStage === stageFilter);
+    if (typeFilter !== 'all') list = list.filter((p) => p.category === typeFilter);
     if (showRxOnly) list = list.filter((p) => p.rxRequired);
     if (showInStock) list = list.filter((p) => p.inStock);
     return list;
-  }, [query, filter, showRxOnly, showInStock]);
+  }, [query, typeFilter, stageFilter, showRxOnly, showInStock]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -61,6 +67,23 @@ export default function ShopScreen() {
         </View>
       </View>
 
+      <View style={styles.stageRow}>
+        <StageTab
+          label="Everyone"
+          active={stageFilter === 'all'}
+          onPress={() => setStageFilter('all')}
+        />
+        {lifeStages.map((s) => (
+          <StageTab
+            key={s.id}
+            label={s.label}
+            icon={s.icon}
+            active={stageFilter === s.id}
+            onPress={() => setStageFilter(s.id)}
+          />
+        ))}
+      </View>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -68,17 +91,17 @@ export default function ShopScreen() {
         contentContainerStyle={styles.chipRow}
       >
         <Chip
-          label="All"
-          active={filter === 'all'}
-          onPress={() => setFilter('all')}
+          label="All types"
+          active={typeFilter === 'all'}
+          onPress={() => setTypeFilter('all')}
         />
         {categories.map((c) => (
           <Chip
             key={c.id}
             label={c.label}
             icon={c.icon}
-            active={filter === c.id}
-            onPress={() => setFilter(c.id)}
+            active={typeFilter === c.id}
+            onPress={() => setTypeFilter(c.id)}
           />
         ))}
       </ScrollView>
@@ -154,6 +177,40 @@ function Chip({
   );
 }
 
+function StageTab({
+  label,
+  icon,
+  active,
+  onPress,
+}: {
+  label: string;
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.stageTab, active && styles.stageTabActive]}
+      accessibilityLabel={`Filter for ${label}`}
+    >
+      {icon ? (
+        <Ionicons
+          name={icon}
+          size={18}
+          color={active ? colors.primary : colors.textSoft}
+        />
+      ) : null}
+      <Text
+        style={[styles.stageTabLabel, active && styles.stageTabLabelActive]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 function Toggle({
   label,
   active,
@@ -209,6 +266,38 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: font.size.md,
     color: colors.text,
+  },
+  stageRow: {
+    flexDirection: 'row',
+    paddingHorizontal: space.lg,
+    paddingTop: space.sm,
+    gap: space.xs,
+  },
+  stageTab: {
+    flex: 1,
+    minHeight: 56,
+    paddingHorizontal: 4,
+    paddingVertical: space.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.bgAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  stageTabActive: {
+    backgroundColor: colors.primaryDim,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  stageTabLabel: {
+    fontSize: font.size.xxs,
+    color: colors.textSoft,
+    fontFamily: font.family.semi,
+    fontWeight: font.weight.semi,
+    textAlign: 'center',
+  },
+  stageTabLabelActive: {
+    color: colors.primary,
   },
   chipScroller: {
     flexGrow: 0,
