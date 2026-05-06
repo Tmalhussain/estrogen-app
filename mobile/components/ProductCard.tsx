@@ -7,13 +7,31 @@ import { useCart } from '@/hooks/useCart';
 import { Product } from '@/data/products';
 import { colors, font, radius, shadow, space } from '@/constants/theme';
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  /**
+   * When true (the default for Rx products until prescription state is
+   * wired into screens), the card renders a visible "needs prescription"
+   * lock: a lock badge over the image, dimmed visuals, and a disabled
+   * lock-icon button instead of the magenta + add-to-cart. Tapping the
+   * card still navigates to /product/[id], where a fuller "Upload
+   * prescription" CTA lives.
+   */
+  locked = product.rxRequired,
+}: {
+  product: Product;
+  locked?: boolean;
+}) {
   const { add } = useCart();
   return (
     <Link href={`/product/${product.id}`} asChild>
       <Pressable style={({ pressed }) => [styles.card, pressed && { opacity: 0.95 }]}>
         <View style={styles.imageWrap}>
-          <Image source={{ uri: product.image }} style={styles.image} contentFit="cover" />
+          <Image
+            source={{ uri: product.image }}
+            style={[styles.image, locked && { opacity: 0.55 }]}
+            contentFit="cover"
+          />
           {product.oldPrice ? (
             <View style={styles.discount}>
               <Text style={styles.discountText}>
@@ -22,8 +40,18 @@ export function ProductCard({ product }: { product: Product }) {
             </View>
           ) : null}
           {product.rxRequired ? (
-            <View style={styles.rxBadge}>
-              <Text style={styles.rxText}>Rx</Text>
+            <View style={[styles.rxBadge, locked && styles.rxBadgeLocked]}>
+              {locked ? (
+                <Ionicons name="lock-closed" size={14} color={colors.onPrimary} />
+              ) : (
+                <Text style={styles.rxText}>Rx</Text>
+              )}
+            </View>
+          ) : null}
+          {locked ? (
+            <View style={styles.lockedRibbon}>
+              <Ionicons name="medical-outline" size={12} color={colors.accent} />
+              <Text style={styles.lockedRibbonText}>Prescription required</Text>
             </View>
           ) : null}
         </View>
@@ -58,17 +86,26 @@ export function ProductCard({ product }: { product: Product }) {
                 <Text style={styles.oldPrice}>{product.oldPrice}</Text>
               ) : null}
             </View>
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation?.();
-                add(product, 1);
-              }}
-              hitSlop={8}
-              style={styles.addBtn}
-              accessibilityLabel={`Add ${product.name} to cart`}
-            >
-              <Ionicons name="add" size={20} color={colors.onPrimary} />
-            </Pressable>
+            {locked ? (
+              <View
+                style={styles.lockedBtn}
+                accessibilityLabel={`${product.name} requires a prescription`}
+              >
+                <Ionicons name="lock-closed" size={18} color={colors.accent} />
+              </View>
+            ) : (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  add(product, 1);
+                }}
+                hitSlop={8}
+                style={styles.addBtn}
+                accessibilityLabel={`Add ${product.name} to cart`}
+              >
+                <Ionicons name="add" size={20} color={colors.onPrimary} />
+              </Pressable>
+            )}
           </View>
         </View>
       </Pressable>
@@ -117,10 +154,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  rxBadgeLocked: {
+    backgroundColor: colors.accent,
+  },
   rxText: {
     color: colors.onPrimary,
     fontSize: font.size.xxs,
     fontWeight: font.weight.bold,
+  },
+  lockedRibbon: {
+    position: 'absolute',
+    bottom: space.sm,
+    left: space.sm,
+    right: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: colors.accentSoft,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+  },
+  lockedRibbonText: {
+    color: colors.accent,
+    fontSize: font.size.xxs,
+    fontWeight: font.weight.bold,
+    letterSpacing: 0.2,
+  },
+  lockedBtn: {
+    backgroundColor: colors.accentSoft,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   body: {
     padding: space.md,

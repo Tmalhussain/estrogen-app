@@ -155,24 +155,51 @@ export default function ProductScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + space.lg }]}>
-        <View style={styles.footerSummary}>
-          <Text style={styles.footerLabel}>Subtotal</Text>
-          <Text style={styles.footerTotal}>{product.price * quantity} SAR</Text>
-        </View>
-        <Button
-          label={product.inStock ? 'Add to cart' : 'Out of stock'}
-          disabled={!product.inStock}
-          onPress={() => {
-            cart.add(product, quantity);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-            router.push('/cart');
-          }}
-          size="lg"
-          leadingIcon={
-            <Ionicons name="bag-add" size={18} color={colors.onPrimary} />
-          }
-          style={{ flex: 1 }}
-        />
+        {product.rxRequired ? (
+          /* Locked-but-visible state: customer can see we carry it but
+             can't order until a pharmacist approves their prescription.
+             Until prescription state is wired into the placeholder
+             product list, every Rx product renders this footer. */
+          <View style={{ flex: 1 }}>
+            <View style={styles.lockedNote}>
+              <Ionicons name="lock-closed" size={14} color={colors.accent} />
+              <Text style={styles.lockedNoteText}>
+                Prescription required. A pharmacist reviews each upload before
+                you can order.
+              </Text>
+            </View>
+            <Button
+              label="Upload prescription"
+              onPress={() => router.push('/(tabs)/profile')}
+              size="lg"
+              leadingIcon={
+                <Ionicons name="document-attach" size={18} color={colors.onPrimary} />
+              }
+              style={{ marginTop: space.sm }}
+            />
+          </View>
+        ) : (
+          <>
+            <View style={styles.footerSummary}>
+              <Text style={styles.footerLabel}>Subtotal</Text>
+              <Text style={styles.footerTotal}>{product.price * quantity} SAR</Text>
+            </View>
+            <Button
+              label={product.inStock ? 'Add to cart' : 'Out of stock'}
+              disabled={!product.inStock}
+              onPress={() => {
+                cart.add(product, quantity);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                router.push('/cart');
+              }}
+              size="lg"
+              leadingIcon={
+                <Ionicons name="bag-add" size={18} color={colors.onPrimary} />
+              }
+              style={{ flex: 1 }}
+            />
+          </>
+        )}
       </View>
     </View>
   );
@@ -387,6 +414,19 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: font.weight.bold,
     fontVariant: ['tabular-nums'],
+  },
+  lockedNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    paddingHorizontal: space.sm,
+  },
+  lockedNoteText: {
+    flex: 1,
+    fontSize: font.size.xs,
+    color: colors.accent,
+    fontWeight: font.weight.semi,
+    lineHeight: 16,
   },
   notFound: {
     flex: 1,

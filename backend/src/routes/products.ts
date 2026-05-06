@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, eq, like, or } from 'drizzle-orm';
+import { and, eq, inArray, like, or } from 'drizzle-orm';
 import { db, schema } from '../db/index.ts';
 import { verifySession } from '../lib/jwt.ts';
 
@@ -18,32 +18,50 @@ async function getOptionalUser(c: import('hono').Context) {
   return await verifySession(token);
 }
 
-async function userHasApprovedPrescription(
-  userId: string,
-  productId: string
-): Promise<boolean> {
-  const now = new Date();
-  const [row] = await db
-    .select({ id: schema.prescriptions.id })
+/**
+ * Return the set of productIds for which the user has an approved,
+ * non-expired prescription. One query, used to compute `canOrder` on
+ * each product in a list response.
+ */
+async function approvedProductIds(userId: string | null): Promise<Set<string>> {
+  if (!userId) return new Set();
+  const rows = await db
+    .select({
+      productId: schema.prescriptions.productId,
+      expiresAt: schema.prescriptions.expiresAt,
+    })
     .from(schema.prescriptions)
     .where(
       and(
         eq(schema.prescriptions.userId, userId),
-        eq(schema.prescriptions.productId, productId),
         eq(schema.prescriptions.status, 'approved')
       )
-    )
-    .limit(1);
-  if (!row) return false;
-  // Treat expired prescriptions as not-approved even if status hasn't
-  // been updated by the cron yet.
-  const [full] = await db
-    .select({ expiresAt: schema.prescriptions.expiresAt })
-    .from(schema.prescriptions)
-    .where(eq(schema.prescriptions.id, row.id))
-    .limit(1);
-  if (full?.expiresAt && full.expiresAt.getTime() < now.getTime()) return false;
-  return true;
+    );
+  const now = Date.now();
+  const out = new Set<string>();
+  for (const r of rows) {
+    if (!r.expiresAt || r.expiresAt.getTime() > now) out.add(r.productId);
+  }
+  return out;
+}
+
+/**
+ * Decorate a raw product row with a `canOrder` flag and (when Rx) a
+ * `lockedReason`. OTC products always have canOrder=true. Rx products
+ * only have canOrder=true when the caller has an approved prescription.
+ */
+function decorate<T extends { id: string; rxRequired: boolean }>(
+  row: T,
+  approved: Set<string>
+): T & { canOrder: boolean; lockedReason: 'prescription_required' | null } {
+  if (!row.rxRequired)
+    return { ...row, canOrder: true, lockedReason: null };
+  const has = approved.has(row.id);
+  return {
+    ...row,
+    canOrder: has,
+    lockedReason: has ? null : 'prescription_required',
+  };
 }
 
 productRoutes.get('/', async (c) => {
@@ -74,7 +92,10 @@ productRoutes.get('/', async (c) => {
           .from(schema.products)
           .where(and(...conditions))
       : await db.select().from(schema.products);
-  return c.json({ products: rows });
+
+  const claims = await getOptionalUser(c);
+  const approved = await approvedProductIds(claims?.sub ?? null);
+  return c.json({ products: rows.map((r) => decorate(r, approved)) });
 });
 
 productRoutes.get('/:id', async (c) => {
@@ -85,7 +106,9 @@ productRoutes.get('/:id', async (c) => {
     .where(eq(schema.products.id, id))
     .limit(1);
   if (!row) return c.json({ error: 'product_not_found' }, 404);
-  return c.json({ product: row });
+  const claims = await getOptionalUser(c);
+  const approved = await approvedProductIds(claims?.sub ?? null);
+  return c.json({ product: decorate(row, approved) });
 });
 
 /**
@@ -94,15 +117,20 @@ productRoutes.get('/:id', async (c) => {
  * Resolves a printed retail barcode (EAN-13 / UPC) to a product row.
  * Used by the mobile scan flow.
  *
- * Behavior:
- *   - 404 not_in_catalog if the barcode isn't in our products table
- *   - 200 + { product, requiresPrescription: false } for OTC items
- *   - 200 + { product, requiresPrescription: true, hasPrescription: true }
- *     when the caller is signed in AND has an approved prescription for
- *     this product (mobile shows it as orderable, with an Rx-verified badge)
- *   - 403 prescription_required for Rx items when there's no approved
- *     prescription. The product info is intentionally omitted from the
- *     403 response so the gate is the gate.
+ * Always returns 200 + the full product row when the barcode is in
+ * our catalog — even for Rx products the caller can't order. The
+ * `canOrder` flag tells the mobile UI whether to render the Add to
+ * cart action or the locked / "upload prescription" state. Hiding Rx
+ * products entirely (the previous 403 behavior) made it harder for
+ * customers to confirm "yes the pharmacy carries this" before going
+ * through the prescription flow.
+ *
+ *   404 not_in_catalog        — barcode not in our products table
+ *   400 invalid_barcode_format — not 6-14 digits
+ *   200 { product, canOrder, lockedReason }
+ *
+ * `lockedReason` is "prescription_required" for Rx products without an
+ * approved prescription, otherwise null.
  */
 productRoutes.get('/by-barcode/:code', async (c) => {
   const code = c.req.param('code').trim();
@@ -116,26 +144,7 @@ productRoutes.get('/by-barcode/:code', async (c) => {
     .limit(1);
   if (!product) return c.json({ error: 'not_in_catalog', barcode: code }, 404);
 
-  if (!product.rxRequired) {
-    return c.json({ product, requiresPrescription: false, hasPrescription: false });
-  }
-
   const claims = await getOptionalUser(c);
-  const hasPrescription = claims
-    ? await userHasApprovedPrescription(claims.sub, product.id)
-    : false;
-
-  if (!hasPrescription) {
-    return c.json(
-      {
-        error: 'prescription_required',
-        productName: product.name,
-        message:
-          'This medication requires a prescription. Upload yours and a pharmacist will review it.',
-      },
-      403
-    );
-  }
-
-  return c.json({ product, requiresPrescription: true, hasPrescription: true });
+  const approved = await approvedProductIds(claims?.sub ?? null);
+  return c.json({ product: decorate(product, approved) });
 });
