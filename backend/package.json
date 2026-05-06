@@ -1,0 +1,30 @@
+{
+  "name": "estrogen-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:reset": "rm -f data.db && npm run db:migrate && npm run db:seed",
+    "key:create": "tsx scripts/create-api-key.ts",
+    "tsc": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.1",
+    "better-sqlite3": "^12.9.0",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.18",
+    "jose": "^6.2.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.0.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.0"
+  }
+}
