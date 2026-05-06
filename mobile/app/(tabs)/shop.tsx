@@ -64,6 +64,7 @@ export default function ShopScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.chipScroller}
         contentContainerStyle={styles.chipRow}
       >
         <Chip
@@ -208,10 +209,15 @@ const styles = StyleSheet.create({
     fontSize: font.size.md,
     color: colors.text,
   },
+  chipScroller: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   chipRow: {
     paddingHorizontal: space.lg,
     gap: space.sm,
     paddingVertical: space.sm,
+    alignItems: 'center',
   },
   chip: {
     flexDirection: 'row',
