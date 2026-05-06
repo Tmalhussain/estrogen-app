@@ -75,7 +75,10 @@ export default function CheckoutScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 220 }}
+        contentContainerStyle={{
+          paddingHorizontal: space.lg,
+          paddingBottom: 140 + insets.bottom,
+        }}
         showsVerticalScrollIndicator={false}
       >
         <Section title="Delivery address">
