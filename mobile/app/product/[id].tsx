@@ -300,6 +300,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: font.weight.bold,
     letterSpacing: -0.6,
+    fontVariant: ['tabular-nums'],
   },
   priceCurrency: {
     fontSize: font.size.md,
@@ -385,6 +386,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.xl,
     color: colors.text,
     fontWeight: font.weight.bold,
+    fontVariant: ['tabular-nums'],
   },
   notFound: {
     flex: 1,

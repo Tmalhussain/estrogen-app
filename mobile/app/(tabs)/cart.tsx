@@ -270,6 +270,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.lg,
     color: colors.text,
     fontWeight: font.weight.bold,
+    fontVariant: ['tabular-nums'],
   },
   itemCurrency: {
     fontSize: font.size.xs,
@@ -305,6 +306,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.sm,
     color: colors.text,
     fontWeight: font.weight.semi,
+    fontVariant: ['tabular-nums'],
   },
   divider: {
     height: 1,
@@ -344,6 +346,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.xl,
     color: colors.text,
     fontWeight: font.weight.bold,
+    fontVariant: ['tabular-nums'],
   },
   empty: {
     flex: 1,

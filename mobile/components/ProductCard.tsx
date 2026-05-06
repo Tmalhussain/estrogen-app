@@ -170,6 +170,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.xl,
     color: colors.text,
     fontWeight: font.weight.bold,
+    fontVariant: ['tabular-nums'],
   },
   currency: {
     fontSize: font.size.xs,

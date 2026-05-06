@@ -73,5 +73,6 @@ const styles = StyleSheet.create({
     fontSize: font.size.md,
     fontWeight: font.weight.semi,
     color: colors.text,
+    fontVariant: ['tabular-nums'],
   },
 });

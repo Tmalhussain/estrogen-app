@@ -447,6 +447,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.sm,
     color: colors.text,
     fontWeight: font.weight.bold,
+    fontVariant: ['tabular-nums'],
   },
   summaryCard: {
     padding: space.lg,
@@ -467,6 +468,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.sm,
     color: colors.text,
     fontWeight: font.weight.semi,
+    fontVariant: ['tabular-nums'],
   },
   divider: {
     height: 1,

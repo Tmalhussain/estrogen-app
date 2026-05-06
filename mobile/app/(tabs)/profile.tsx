@@ -220,6 +220,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.sm,
     color: 'rgba(255,255,255,0.85)',
     marginTop: 2,
+    fontVariant: ['tabular-nums'],
   },
   statRow: {
     flexDirection: 'row',
@@ -238,6 +239,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.xl,
     color: colors.onPrimary,
     fontWeight: font.weight.bold,
+    fontVariant: ['tabular-nums'],
   },
   statLabelRow: {
     flexDirection: 'row',

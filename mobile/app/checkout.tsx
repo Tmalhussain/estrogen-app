@@ -404,6 +404,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.sm,
     color: colors.text,
     fontWeight: font.weight.semi,
+    fontVariant: ['tabular-nums'],
   },
   divider: {
     height: 1,
@@ -423,6 +424,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.sm,
     color: colors.text,
     fontWeight: font.weight.semi,
+    fontVariant: ['tabular-nums'],
   },
   footer: {
     flexDirection: 'row',
