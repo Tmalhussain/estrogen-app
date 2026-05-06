@@ -30,7 +30,11 @@ export default function VerifyScreen() {
   const { phoneNumber } = useLocalSearchParams<{ phoneNumber: string }>();
   const { verifyOtp, sendOtp } = useAuth();
 
-  const [code, setCode] = useState('');
+  // Pre-fill the dev bypass code in development so the flow auto-submits
+  // and lands on the home tab without needing to look up the real OTP in
+  // the server log. In a production build (__DEV__ is false) this is empty
+  // and the user types their real code.
+  const [code, setCode] = useState(__DEV__ ? '000000' : '');
   const [firstName, setFirstName] = useState('');
   const [needsName, setNeedsName] = useState(false);
   const [submitting, setSubmitting] = useState(false);

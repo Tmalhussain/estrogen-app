@@ -67,12 +67,11 @@ Rate limits live in the backend: 5 sends per phone per 15 minutes; 5 wrong guess
 
 ## Quick test of the stock API
 
-```bash
-cd backend
-npm run key:create -- --label="POS terminal #1" --scopes=stock:read,stock:update
-# → estk_xxx (saved once — never retrievable in plaintext)
+`npm run db:seed` pre-creates a deterministic test API key so you can curl right away:
 
-KEY=estk_xxx
+```bash
+KEY=estk_test_local_dev_only_DO_NOT_USE_IN_PROD
+
 curl http://127.0.0.1:8787/api/stock -H "X-API-Key: $KEY"
 
 curl -X POST http://127.0.0.1:8787/api/stock/update \
@@ -80,7 +79,24 @@ curl -X POST http://127.0.0.1:8787/api/stock/update \
   -d '{"updates":[{"sku":"EST-FOL-5MG-60","delta":-3,"note":"sold via POS"}]}'
 ```
 
+To mint a real key (for staging or sharing with a partner):
+
+```bash
+cd backend
+npm run key:create -- --label="POS terminal #1" --scopes=stock:read,stock:update
+```
+
 Full curl cookbook + Cloud SQL setup + Cloud Functions deploy in [backend/README.md](backend/README.md).
+
+## Local-dev placeholders (tap-tap login)
+
+For fast iteration, three placeholders are pre-baked. **All gated to local dev** — production with Unifonic + Cloud SQL ignores them entirely.
+
+- **Dev OTP code `000000`** verifies any Saudi phone when `SMS_PROVIDER=console`
+- **Test API key** `estk_test_local_dev_only_DO_NOT_USE_IN_PROD` (seeded with `stock:read` + `stock:update`)
+- **Demo accounts**: `admin@estrogen.sa` / `admin12345` (email login) and `+966500000000` (phone OTP)
+
+The mobile app pre-fills the phone field with `0500000000` and the verify code with `000000` in `__DEV__`, so opening the app on `npm run web` and tapping through both screens lands you on Home. A subtle warning banner makes the bypass visible.
 
 ## Brand
 

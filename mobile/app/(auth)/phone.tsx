@@ -28,7 +28,10 @@ export default function PhoneScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { sendOtp } = useAuth();
-  const [phone, setPhone] = useState('');
+  // In dev (expo start), pre-fill the demo phone so a tap-tap flow lands
+  // the dev on the home tab. The matching backend bypass accepts the
+  // dev-only code 000000 for any phone when SMS_PROVIDER=console.
+  const [phone, setPhone] = useState(__DEV__ ? '0500000000' : '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,6 +117,16 @@ export default function PhoneScreen() {
           By continuing you agree to our terms of service and privacy policy.
           Standard SMS rates may apply.
         </Text>
+
+        {__DEV__ ? (
+          <View style={styles.devBanner}>
+            <Ionicons name="construct-outline" size={14} color={colors.warning} />
+            <Text style={styles.devBannerText}>
+              Dev mode — any code 000000 verifies any phone. Real SMS only when
+              SMS_PROVIDER=unifonic.
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -234,5 +247,22 @@ const styles = StyleSheet.create({
     marginTop: space.xxl,
     paddingHorizontal: space.md,
     lineHeight: 18,
+  },
+  devBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.warningSoft,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    marginTop: space.lg,
+  },
+  devBannerText: {
+    flex: 1,
+    fontSize: font.size.xxs,
+    color: colors.warning,
+    fontWeight: font.weight.semi,
+    lineHeight: 16,
   },
 });

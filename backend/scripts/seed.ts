@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db, schema } from '../src/db/index.ts';
 import { hashPassword } from '../src/lib/passwords.ts';
+import { hashApiKey } from '../src/lib/api-key.ts';
 
 const products: (typeof schema.products.$inferInsert)[] = [
   {
@@ -209,6 +210,33 @@ if (adminUser.length === 0) {
   console.log(`created admin user ${adminEmail} / admin12345`);
 } else {
   console.log('admin user already present');
+}
+
+// Deterministic test API key. Plaintext is committed to source so curl
+// examples and integration tests work without an extra `npm run key:create`
+// step. ABSOLUTELY NOT a production key — the prefix `estk_test_` makes it
+// trivially identifiable, and the seed script only runs against local SQLite.
+const TEST_API_KEY = 'estk_test_local_dev_only_DO_NOT_USE_IN_PROD';
+const testKeyHash = hashApiKey(TEST_API_KEY);
+const existingKey = db
+  .select({ id: schema.apiKeys.id })
+  .from(schema.apiKeys)
+  .where(eq(schema.apiKeys.keyHash, testKeyHash))
+  .all();
+if (existingKey.length === 0) {
+  db.insert(schema.apiKeys)
+    .values({
+      label: 'Local dev test key (seed)',
+      keyPrefix: TEST_API_KEY.slice(0, 12),
+      keyHash: testKeyHash,
+      scopes: ['stock:read', 'stock:update'],
+    })
+    .run();
+  console.log(`created test API key: ${TEST_API_KEY}`);
+  console.log(`  scopes: stock:read, stock:update`);
+  console.log(`  use as:  curl -H "X-API-Key: ${TEST_API_KEY}" http://127.0.0.1:8787/api/stock`);
+} else {
+  console.log('test API key already present (use estk_test_local_dev_only_DO_NOT_USE_IN_PROD)');
 }
 
 const demoPhone = '+966500000000';

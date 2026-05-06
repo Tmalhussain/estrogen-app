@@ -7,6 +7,8 @@ import {
   MAX_SENDS_PER_WINDOW,
   SEND_WINDOW_SEC,
   MAX_VERIFY_ATTEMPTS,
+  DEV_BYPASS_OTP_CODE,
+  devBypassEnabled,
   generateOtpCode,
   hashCode,
   verifyHashedCode,
@@ -101,45 +103,59 @@ otpRoutes.post('/verify-otp', async (c) => {
   if (!/^\d{6}$/.test(code))
     return c.json({ error: 'invalid_code_format' }, 400);
 
-  const [attempt] = await db
-    .select()
-    .from(schema.otpAttempts)
-    .where(
-      and(
-        eq(schema.otpAttempts.phoneNumber, phone),
-        gte(schema.otpAttempts.expiresAt, new Date())
+  // Dev-only bypass: when SMS_PROVIDER=console (local-dev signal), accept
+  // the well-known DEV_BYPASS_OTP_CODE without consulting otp_attempts.
+  // Production (SMS_PROVIDER=unifonic or any non-console value) ignores
+  // this branch entirely and runs the real verification path below.
+  const usingDevBypass =
+    devBypassEnabled() && code === DEV_BYPASS_OTP_CODE;
+
+  if (!usingDevBypass) {
+    const [attempt] = await db
+      .select()
+      .from(schema.otpAttempts)
+      .where(
+        and(
+          eq(schema.otpAttempts.phoneNumber, phone),
+          gte(schema.otpAttempts.expiresAt, new Date())
+        )
       )
-    )
-    .orderBy(desc(schema.otpAttempts.createdAt))
-    .limit(1);
+      .orderBy(desc(schema.otpAttempts.createdAt))
+      .limit(1);
 
-  if (!attempt || attempt.verifiedAt)
-    return c.json({ error: 'no_active_otp' }, 410);
-  if (attempt.verifyAttempts >= MAX_VERIFY_ATTEMPTS) {
-    c.header('Retry-After', String(OTP_TTL_SEC));
-    return c.json(
-      {
-        error: 'too_many_verify_attempts',
-        message: 'Too many wrong codes. Request a new OTP via /auth/send-otp.',
-      },
-      429
-    );
-  }
+    if (!attempt || attempt.verifiedAt)
+      return c.json({ error: 'no_active_otp' }, 410);
+    if (attempt.verifyAttempts >= MAX_VERIFY_ATTEMPTS) {
+      c.header('Retry-After', String(OTP_TTL_SEC));
+      return c.json(
+        {
+          error: 'too_many_verify_attempts',
+          message: 'Too many wrong codes. Request a new OTP via /auth/send-otp.',
+        },
+        429
+      );
+    }
 
-  const matches = verifyHashedCode(code, attempt.codeHash);
-  if (!matches) {
+    const matches = verifyHashedCode(code, attempt.codeHash);
+    if (!matches) {
+      await db
+        .update(schema.otpAttempts)
+        .set({ verifyAttempts: attempt.verifyAttempts + 1 })
+        .where(eq(schema.otpAttempts.id, attempt.id));
+      const remaining = Math.max(0, MAX_VERIFY_ATTEMPTS - (attempt.verifyAttempts + 1));
+      return c.json({ error: 'wrong_code', remaining }, 401);
+    }
+
     await db
       .update(schema.otpAttempts)
-      .set({ verifyAttempts: attempt.verifyAttempts + 1 })
+      .set({ verifiedAt: new Date() })
       .where(eq(schema.otpAttempts.id, attempt.id));
-    const remaining = Math.max(0, MAX_VERIFY_ATTEMPTS - (attempt.verifyAttempts + 1));
-    return c.json({ error: 'wrong_code', remaining }, 401);
+  } else {
+    console.warn(
+      `[verify-otp] DEV BYPASS used for ${phone.slice(0, 7)}**** — SMS_PROVIDER=console. ` +
+        `This branch is dead in production.`
+    );
   }
-
-  await db
-    .update(schema.otpAttempts)
-    .set({ verifiedAt: new Date() })
-    .where(eq(schema.otpAttempts.id, attempt.id));
 
   // Find or create the user. New customers complete a tiny profile during
   // signup (firstName); returning users skip that entirely.

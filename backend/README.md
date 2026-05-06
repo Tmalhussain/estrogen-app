@@ -33,6 +33,30 @@ npm run db:seed            # 9 products + admin@estrogen.sa + demo phone user
 npm run dev                # listens on http://127.0.0.1:8787
 ```
 
+## Local-dev test placeholders
+
+Three placeholders make local iteration tap-tap fast. **All three are gated to local dev** (SQLite + `SMS_PROVIDER=console`) and have no effect in production.
+
+| Placeholder | Value | When it works | Why |
+|---|---|---|---|
+| Dev OTP code | `000000` | `/auth/verify-otp` accepts this for ANY Saudi phone when `SMS_PROVIDER=console` | Skip log-grepping for the real code during iteration |
+| Test API key | `estk_test_local_dev_only_DO_NOT_USE_IN_PROD` | Pre-seeded by `npm run db:seed` with both `stock:read` + `stock:update` scopes | Curl examples work without `npm run key:create` |
+| Demo accounts | `admin@estrogen.sa` / `admin12345` (admin) and `+966500000000` (phone-only customer) | Created by `npm run db:seed` | One-key login during dev |
+
+Quick login bypass:
+
+```bash
+# No /send-otp needed; dev bypass goes straight to verify
+curl -s -X POST -H 'Content-Type: application/json' \
+  -d '{"phoneNumber":"+966500000000","code":"000000"}' \
+  http://127.0.0.1:8787/auth/verify-otp
+# → { "token": "eyJ…", "isNewUser": false, "user": { … } }
+```
+
+The mobile app's `(auth)/phone` and `(auth)/verify` screens pre-fill these values when `__DEV__` is true (`expo start`), so the customer flow is: open app → tap "Send code" → tap "Verify" → home. A small `Dev mode — code 000000 verifies any phone` banner makes the bypass visible.
+
+The bypass branch is dead code in production — `devBypassEnabled()` returns `false` when `SMS_PROVIDER` is anything other than `console`.
+
 ## SMS OTP signup flow
 
 Customer flow — backend never holds plaintext codes (sha-256 hashed at rest), rate-limits sends, locks out after 5 wrong guesses.
