@@ -37,3 +37,4 @@ yarn-error.*
 .vscode/
 .idea/
 .design-audit-20260506/
+.qa-reports-*/

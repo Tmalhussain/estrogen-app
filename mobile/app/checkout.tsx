@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Text,
   View,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -51,11 +50,14 @@ export default function CheckoutScreen() {
     setTimeout(() => {
       cart.clear();
       setPlacing(false);
-      Alert.alert(
-        'Order placed!',
-        'Your pharmacist will review the order shortly. You can track delivery from the Orders tab.',
-        [{ text: 'View orders', onPress: () => router.replace('/orders') }]
-      );
+      // Navigate directly instead of relying on Alert.alert. RN-Web maps
+      // Alert.alert to window.alert which doesn't honor the multi-button
+      // onPress contract — the "View orders" callback never fires and
+      // the user is stranded on /checkout with a "Place order · 0 SAR"
+      // button. The Orders tab lands the user on their fresh order
+      // (once the backend wire-up is done) and the navigation animation
+      // is the success cue.
+      router.replace('/orders?placed=1');
     }, 700);
   };
 

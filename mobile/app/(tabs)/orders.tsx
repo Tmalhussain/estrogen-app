@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pill } from '@/components/Pill';
 import { Order, OrderStatus, orders, statusMeta } from '@/data/orders';
@@ -20,6 +20,20 @@ const ACTIVE_STATUSES: OrderStatus[] = ['placed', 'preparing', 'out_for_delivery
 
 export default function OrdersScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  // ?placed=1 is set by the checkout success path so we can show a brief
+  // success banner. We strip it from the URL after a few seconds so back-
+  // navigation into the tab from elsewhere doesn't keep showing it.
+  const params = useLocalSearchParams<{ placed?: string }>();
+  const [showPlaced, setShowPlaced] = useState(params.placed === '1');
+  useEffect(() => {
+    if (!showPlaced) return;
+    const t = setTimeout(() => {
+      setShowPlaced(false);
+      router.setParams({ placed: undefined });
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [showPlaced, router]);
   const [tab, setTab] = useState<Tab>('active');
 
   const active = useMemo(
@@ -36,6 +50,14 @@ export default function OrdersScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
         <Text style={styles.title}>Your orders</Text>
+        {showPlaced ? (
+          <View style={styles.placedBanner}>
+            <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+            <Text style={styles.placedBannerText}>
+              Order placed. Your pharmacist will review it shortly.
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.tabRow}>
           <TabBtn
             label={`Active · ${active.length}`}
@@ -166,6 +188,23 @@ const styles = StyleSheet.create({
     fontWeight: font.weight.bold,
     letterSpacing: -0.6,
     marginBottom: space.lg,
+  },
+  placedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    backgroundColor: colors.successSoft,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    marginBottom: space.md,
+  },
+  placedBannerText: {
+    flex: 1,
+    fontSize: font.size.sm,
+    color: colors.success,
+    fontWeight: font.weight.semi,
+    lineHeight: 18,
   },
   tabRow: {
     flexDirection: 'row',
