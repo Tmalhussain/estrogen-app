@@ -16,19 +16,54 @@ const updatedAt = () =>
     .notNull()
     .default(sql`(unixepoch() * 1000)`);
 
-export const users = sqliteTable('users', {
-  id: id(),
-  email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  firstName: text('first_name').notNull(),
-  lastName: text('last_name').notNull().default(''),
-  phone: text('phone').notNull().default(''),
-  role: text('role', { enum: ['customer', 'pharmacist', 'admin'] })
-    .notNull()
-    .default('customer'),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-});
+export const users = sqliteTable(
+  'users',
+  {
+    id: id(),
+    // Phone is the primary identity for the SMS-OTP flow. Stored E.164.
+    phoneNumber: text('phone_number').unique(),
+    phoneVerifiedAt: integer('phone_verified_at', { mode: 'timestamp_ms' }),
+    // Email + password remain available for staff/admin accounts that don't
+    // sign in by phone. Customer rows can have null email/passwordHash.
+    email: text('email').unique(),
+    passwordHash: text('password_hash'),
+    firstName: text('first_name').notNull().default(''),
+    lastName: text('last_name').notNull().default(''),
+    role: text('role', { enum: ['customer', 'pharmacist', 'admin'] })
+      .notNull()
+      .default('customer'),
+    // Set when the row has been mirrored into Firebase Auth. Null until then.
+    firebaseUid: text('firebase_uid').unique(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    phoneIdx: index('users_phone_idx').on(t.phoneNumber),
+  })
+);
+
+/**
+ * One row per OTP send. We never store the plaintext code — only its hash.
+ * Verify reads the freshest unverified row inside TTL, increments
+ * verifyAttempts on each wrong guess, marks verified on success.
+ */
+export const otpAttempts = sqliteTable(
+  'otp_attempts',
+  {
+    id: id(),
+    phoneNumber: text('phone_number').notNull(),
+    codeHash: text('code_hash').notNull(),
+    verifyAttempts: integer('verify_attempts').notNull().default(0),
+    verifiedAt: integer('verified_at', { mode: 'timestamp_ms' }),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    ip: text('ip'),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    phoneIdx: index('otp_attempts_phone_idx').on(t.phoneNumber),
+    createdIdx: index('otp_attempts_created_idx').on(t.createdAt),
+  })
+);
 
 export const products = sqliteTable(
   'products',
@@ -166,6 +201,7 @@ export const stockMovements = sqliteTable(
 );
 
 export type User = typeof users.$inferSelect;
+export type OtpAttempt = typeof otpAttempts.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;

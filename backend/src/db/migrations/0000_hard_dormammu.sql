@@ -40,6 +40,19 @@ CREATE TABLE `orders` (
 --> statement-breakpoint
 CREATE INDEX `orders_user_idx` ON `orders` (`user_id`);--> statement-breakpoint
 CREATE INDEX `orders_status_idx` ON `orders` (`status`);--> statement-breakpoint
+CREATE TABLE `otp_attempts` (
+	`id` text PRIMARY KEY NOT NULL,
+	`phone_number` text NOT NULL,
+	`code_hash` text NOT NULL,
+	`verify_attempts` integer DEFAULT 0 NOT NULL,
+	`verified_at` integer,
+	`expires_at` integer NOT NULL,
+	`ip` text,
+	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `otp_attempts_phone_idx` ON `otp_attempts` (`phone_number`);--> statement-breakpoint
+CREATE INDEX `otp_attempts_created_idx` ON `otp_attempts` (`created_at`);--> statement-breakpoint
 CREATE TABLE `products` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -83,14 +96,19 @@ CREATE TABLE `stock_movements` (
 CREATE INDEX `stock_movements_product_idx` ON `stock_movements` (`product_id`);--> statement-breakpoint
 CREATE TABLE `users` (
 	`id` text PRIMARY KEY NOT NULL,
-	`email` text NOT NULL,
-	`password_hash` text NOT NULL,
-	`first_name` text NOT NULL,
+	`phone_number` text,
+	`phone_verified_at` integer,
+	`email` text,
+	`password_hash` text,
+	`first_name` text DEFAULT '' NOT NULL,
 	`last_name` text DEFAULT '' NOT NULL,
-	`phone` text DEFAULT '' NOT NULL,
 	`role` text DEFAULT 'customer' NOT NULL,
+	`firebase_uid` text,
 	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch() * 1000) NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `users_email_unique` ON `users` (`email`);
+CREATE UNIQUE INDEX `users_phone_number_unique` ON `users` (`phone_number`);--> statement-breakpoint
+CREATE UNIQUE INDEX `users_email_unique` ON `users` (`email`);--> statement-breakpoint
+CREATE UNIQUE INDEX `users_firebase_uid_unique` ON `users` (`firebase_uid`);--> statement-breakpoint
+CREATE INDEX `users_phone_idx` ON `users` (`phone_number`);

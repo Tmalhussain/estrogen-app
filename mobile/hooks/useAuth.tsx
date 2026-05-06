@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { api, ApiError, type ApiUser } from '@/lib/api';
+import { firebase } from '@/lib/firebase';
 import { tokenStorage } from '@/lib/storage';
 
 const TOKEN_KEY = 'estrogen.session.token';
@@ -17,14 +18,17 @@ type AuthState =
   | { status: 'signed-in'; user: ApiUser; token: string };
 
 type AuthContextValue = AuthState & {
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (input: {
-    email: string;
-    password: string;
-    firstName: string;
+  /** Step 1: Send a 6-digit code to the user's phone via SMS. */
+  sendOtp: (phoneNumber: string) => Promise<{ expiresInSec: number }>;
+  /** Step 2: Verify the code. New users must pass firstName. Returns whether the user is new. */
+  verifyOtp: (input: {
+    phoneNumber: string;
+    code: string;
+    firstName?: string;
     lastName?: string;
-    phone?: string;
-  }) => Promise<void>;
+  }) => Promise<{ isNewUser: boolean }>;
+  /** Email/password — staff & admin only. */
+  signInWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -49,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { user } = await api.me(token);
         if (!cancelled) setState({ status: 'signed-in', user, token });
       } catch (err) {
-        // Token invalid / expired / network down — drop it and start over.
         if (err instanceof ApiError && err.status === 401) {
           await tokenStorage.remove(TOKEN_KEY);
         }
@@ -61,21 +64,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const adopt = async (token: string, user: ApiUser, firebaseCustomToken: string | null) => {
+    await tokenStorage.set(TOKEN_KEY, token);
+    // If Firebase is configured and the backend handed us a custom token,
+    // sign into Firebase too — that's how the same UID propagates to FCM,
+    // Cloud Storage, RTDB, etc. Failure here doesn't break the app.
+    if (firebaseCustomToken && firebase.enabled()) {
+      try {
+        await firebase.signInWithCustomTokenIfPossible(firebaseCustomToken);
+      } catch (err) {
+        console.warn('[auth] firebase signInWithCustomToken failed', err);
+      }
+    }
+    setState({ status: 'signed-in', user, token });
+  };
+
   const value = useMemo<AuthContextValue>(
     () => ({
       ...state,
-      signIn: async (email, password) => {
-        const { token, user } = await api.login({ email, password });
-        await tokenStorage.set(TOKEN_KEY, token);
-        setState({ status: 'signed-in', user, token });
+      sendOtp: async (phoneNumber) => {
+        const { expiresInSec } = await api.sendOtp(phoneNumber);
+        return { expiresInSec };
       },
-      signUp: async (input) => {
-        const { token, user } = await api.signup(input);
-        await tokenStorage.set(TOKEN_KEY, token);
-        setState({ status: 'signed-in', user, token });
+      verifyOtp: async (input) => {
+        const result = await api.verifyOtp(input);
+        await adopt(result.token, result.user, result.firebaseCustomToken);
+        return { isNewUser: result.isNewUser };
+      },
+      signInWithEmail: async (email, password) => {
+        const { token, user } = await api.login({ email, password });
+        await adopt(token, user, null);
       },
       signOut: async () => {
         await tokenStorage.remove(TOKEN_KEY);
+        await firebase.signOutIfPossible();
         setState({ status: 'signed-out', user: null, token: null });
       },
     }),

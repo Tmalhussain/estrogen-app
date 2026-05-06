@@ -113,7 +113,7 @@ function RootStack() {
     if (status === 'loading') return;
     const inAuthGroup = segments[0] === '(auth)';
     if (status === 'signed-out' && !inAuthGroup) {
-      router.replace('/(auth)/login');
+      router.replace('/(auth)/phone');
     } else if (status === 'signed-in' && inAuthGroup) {
       router.replace('/(tabs)');
     }

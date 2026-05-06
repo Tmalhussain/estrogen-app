@@ -190,24 +190,44 @@ if (existing.length > 0) {
   console.log(`seeded ${products.length} products`);
 }
 
-const demoEmail = 'demo@estrogen.sa';
+const adminEmail = 'admin@estrogen.sa';
+const adminUser = db
+  .select({ id: schema.users.id })
+  .from(schema.users)
+  .where(eq(schema.users.email, adminEmail))
+  .all();
+if (adminUser.length === 0) {
+  db.insert(schema.users)
+    .values({
+      email: adminEmail,
+      passwordHash: hashPassword('admin12345'),
+      firstName: 'Admin',
+      lastName: '',
+      role: 'admin',
+    })
+    .run();
+  console.log(`created admin user ${adminEmail} / admin12345`);
+} else {
+  console.log('admin user already present');
+}
+
+const demoPhone = '+966500000000';
 const demoUser = db
   .select({ id: schema.users.id })
   .from(schema.users)
-  .where(eq(schema.users.email, demoEmail))
+  .where(eq(schema.users.phoneNumber, demoPhone))
   .all();
 if (demoUser.length === 0) {
   db.insert(schema.users)
     .values({
-      email: demoEmail,
-      passwordHash: hashPassword('demo12345'),
+      phoneNumber: demoPhone,
+      phoneVerifiedAt: new Date(),
       firstName: 'Demo',
-      lastName: 'User',
-      phone: '+966500000000',
+      lastName: 'Customer',
       role: 'customer',
     })
     .run();
-  console.log(`created demo user ${demoEmail} / demo12345`);
+  console.log(`created demo phone-only user ${demoPhone}`);
 } else {
-  console.log('demo user already present');
+  console.log('demo phone user already present');
 }

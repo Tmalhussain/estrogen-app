@@ -88,11 +88,11 @@ export default function ProfileScreen() {
   const fullName = user
     ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}`
     : 'Estrogen customer';
-  const handle = user?.phone || user?.email || '';
+  const handle = user?.phoneNumber || user?.email || '';
 
   const sections = buildSections({
     email: user?.email ?? '',
-    phone: user?.phone ?? '',
+    phone: user?.phoneNumber ?? '',
     firstName: user?.firstName ?? 'You',
     onSignOut: () => {
       void signOut();

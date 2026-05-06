@@ -20,10 +20,11 @@ export const API_BASE_URL = resolveBaseUrl();
 
 export type ApiUser = {
   id: string;
-  email: string;
+  email: string | null;
+  phoneNumber: string | null;
+  phoneVerifiedAt: string | null;
   firstName: string;
   lastName: string;
-  phone: string;
   role: 'customer' | 'pharmacist' | 'admin';
   createdAt: string;
 };
@@ -119,17 +120,37 @@ function safeParse(text: string): unknown {
   }
 }
 
+export type VerifyOtpResult = {
+  token: string;
+  firebaseCustomToken: string | null;
+  isNewUser: boolean;
+  user: ApiUser;
+};
+
 export const api = {
+  // Email + password — admin/staff flow only.
   signup: (body: {
     email: string;
     password: string;
     firstName: string;
     lastName?: string;
-    phone?: string;
   }) => request<{ token: string; user: ApiUser }>('/auth/signup', { method: 'POST', body }),
   login: (body: { email: string; password: string }) =>
     request<{ token: string; user: ApiUser }>('/auth/login', { method: 'POST', body }),
   me: (token: string) => request<{ user: ApiUser }>('/auth/me', { token }),
+
+  // Phone + SMS OTP — primary customer flow.
+  sendOtp: (phoneNumber: string) =>
+    request<{ ok: true; expiresInSec: number }>('/auth/send-otp', {
+      method: 'POST',
+      body: { phoneNumber },
+    }),
+  verifyOtp: (input: {
+    phoneNumber: string;
+    code: string;
+    firstName?: string;
+    lastName?: string;
+  }) => request<VerifyOtpResult>('/auth/verify-otp', { method: 'POST', body: input }),
 
   listProducts: (params?: { category?: string; q?: string; rxOnly?: boolean; inStockOnly?: boolean }) => {
     const qs = new URLSearchParams();

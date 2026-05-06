@@ -1,39 +1,76 @@
 # Estrogen Pharmacy
 
-A women's pharmacy delivery platform for Saudi Arabia. Two pieces:
+A women's pharmacy delivery platform for Saudi Arabia. Two pieces, one repo.
 
-- **`mobile/`** — React Native + Expo SDK 56 app: signup, login, browse products, cart, checkout, order tracking, profile.
-- **`backend/`** — Hono + SQLite + Drizzle backend: JWT auth, orders, and an API-key-protected `/api/stock/*` surface for POS / WMS / supplier integrations.
+- **`mobile/`** — React Native + Expo SDK 56 app: phone-OTP signup, browse products, cart, checkout, order tracking, profile.
+- **`backend/`** — Hono on Node, SQL via Drizzle ORM (SQLite for dev, **Postgres / Cloud SQL** in prod), optional **Firebase Admin** for custom tokens, and an API-key-protected `/api/stock/*` surface for POS / WMS / supplier integrations. The same Hono app runs unchanged inside a Firebase Cloud Function.
 
 ## Run the whole stack locally
 
-In one terminal — start the backend:
-
 ```bash
+# Terminal 1 — backend
 cd backend
 npm install
-npm run db:migrate    # creates ./data.db and applies the schema
-npm run db:seed       # 9 products + demo@estrogen.sa / demo12345
-npm run dev           # → http://127.0.0.1:8787
-```
+cp .env.example .env        # edit JWT_SECRET, leave SMS_PROVIDER=console for dev
+npm run db:migrate
+npm run db:seed             # 9 products + admin@estrogen.sa + a demo phone user
+npm run dev                 # http://127.0.0.1:8787
 
-In another — start the mobile app:
-
-```bash
+# Terminal 2 — mobile
 cd mobile
 npm install
-npm run web           # browser preview on http://127.0.0.1:8081
+npm run web                 # http://127.0.0.1:8081
 # or: npm run ios / npm run android
 ```
 
-The mobile app talks to `http://127.0.0.1:8787` by default. For physical devices set `EXPO_PUBLIC_API_URL=http://<your-lan-ip>:8787` in `mobile/.env.local` — neither `localhost` nor `10.0.2.2` reaches your laptop from a real phone.
+For physical devices, set `EXPO_PUBLIC_API_URL=http://<your-lan-ip>:8787` in `mobile/.env.local`. Neither `localhost` nor `10.0.2.2` reaches your laptop from a real phone.
+
+## SMS OTP signup
+
+The customer-facing flow:
+
+1. **`/(auth)/phone`** — user enters `+966 5X XXX XXXX` (or `05…`, the backend normalizes both).
+2. **Backend** generates a 6-digit code, stores its sha-256 hash, sends an SMS via Unifonic in production or logs to the server log in dev (`SMS_PROVIDER=console`).
+3. **`/(auth)/verify`** — user enters the 6 digits. New users get a single "First name" prompt; returning users skip straight through. Auto-submits as soon as the 6th digit lands.
+4. **Backend** finds-or-creates the user, marks them phone-verified, returns our JWT and (when Firebase Admin is configured) a Firebase custom token.
+5. **Mobile** stores the JWT in iOS keychain / Android keystore and (if Firebase is wired) signs into Firebase Auth so the same UID flows into FCM, Cloud Storage, etc.
+
+Rate limits live in the backend: 5 sends per phone per 15 minutes; 5 wrong guesses per OTP.
+
+## Architecture at a glance
+
+```
+┌──────────── mobile/ (Expo SDK 56) ────────────┐
+│                                                │
+│  (auth)/phone  →  POST /auth/send-otp          │
+│  (auth)/verify →  POST /auth/verify-otp        │
+│                       ↓                        │
+│   AuthContext stores OUR JWT + signs into      │
+│   Firebase Auth with the custom token          │
+│                                                │
+└──────────────────────┬─────────────────────────┘
+                       │  Bearer JWT
+                       ▼
+┌─── backend/ Hono server (or Cloud Function) ──┐
+│                                                │
+│   /auth/* /products /orders /api/stock/*       │
+│              ↓                                 │
+│   Drizzle ORM ─────────────────┐               │
+│              ↓                 │               │
+│   SQLite (dev) | Postgres (prod, Cloud SQL)    │
+│                                                │
+│   firebase-admin (optional) ──→ Firebase Auth  │
+│   smsProvider (console | unifonic) ──→ SMS     │
+│                                                │
+└────────────────────────────────────────────────┘
+```
 
 ## Quick test of the stock API
 
 ```bash
 cd backend
 npm run key:create -- --label="POS terminal #1" --scopes=stock:read,stock:update
-# → estk_xxx (save this — it's not stored in plaintext)
+# → estk_xxx (saved once — never retrievable in plaintext)
 
 KEY=estk_xxx
 curl http://127.0.0.1:8787/api/stock -H "X-API-Key: $KEY"
@@ -43,7 +80,7 @@ curl -X POST http://127.0.0.1:8787/api/stock/update \
   -d '{"updates":[{"sku":"EST-FOL-5MG-60","delta":-3,"note":"sold via POS"}]}'
 ```
 
-Full curl cookbook lives in [backend/README.md](backend/README.md).
+Full curl cookbook + Cloud SQL setup + Cloud Functions deploy in [backend/README.md](backend/README.md).
 
 ## Brand
 
@@ -55,48 +92,66 @@ The visual system is sampled directly from [logo.jpeg](logo.jpeg):
 
 App icon, adaptive icon, splash screen, and favicon are all generated from that source file into [mobile/assets/images/](mobile/assets/images/).
 
-## Mobile app — what's there
+## Mobile — what's there
 
-- **(auth)** — login + signup screens, JWT stored in iOS keychain / Android keystore (web localStorage)
+- **(auth)/phone + (auth)/verify** — phone-OTP signup/login, JWT stored in iOS keychain / Android keystore, optional Firebase Auth bridge
 - **(tabs)** — Home, Shop, Cart, Orders, Profile, gated behind auth
-- **product/[id]** — gallery, ratings, pregnancy-safe / Rx tags, pharmacist note, quantity stepper
+- **product/[id]** — gallery, ratings, pregnancy-safe / Rx tags, pharmacist note, quantity stepper at 44px touch targets
 - **checkout** — address picker, delivery options, four payment methods, order summary
 - **order/[id]** — live tracking timeline, driver card, full receipt
 
-Body and display text use **DM Sans + Tajawal** (Arabic). Touch targets are 44px+ across interactive elements, prices and totals use tabular-nums.
+DM Sans + Tajawal across body and headings. Tabular-nums on every money/phone field.
 
 ## Backend — what's there
 
-- `users`, `products`, `orders`, `order_items`, `api_keys`, `stock_movements`
-- Order placement decrements stock and writes a `stock_movements` row in the same transaction
-- API keys are sha-256 hashed at rest, scoped (`stock:read`, `stock:update`), revocable, and every authenticated call writes to `api_keys.last_used_at`
-- Negative-stock attempts are 409 and roll the whole batch back
+- **Schema:** `users` (phone-first identity), `otp_attempts`, `products`, `orders`, `order_items`, `api_keys`, `stock_movements`
+- **OTP flow:** sha-256 hashed codes, 5-min TTL, 5-send rate limit per phone per 15 min, 5 wrong guesses lock out
+- **Order placement** decrements stock and writes a `stock_movements` row in the same Drizzle transaction
+- **API keys** are sha-256 hashed, scoped (`stock:read`, `stock:update`), revocable; every request touches `last_used_at`
+- **Same code, two runtimes:** plain Node server (`npm run dev`) for local dev, Cloud Function (`firebase deploy --only functions`) for production
+- **Same code, two databases:** SQLite for local dev, Postgres for production via env (`DATABASE_URL=postgres://…`)
 
 ## Project layout
 
 ```
 .
-├── README.md                 # this file
-├── logo.jpeg                 # brand source
-├── logo.png                  # background-removed PNG (used in-app)
-├── mobile/                   # Expo SDK 56 app
-│   ├── app/                  # expo-router routes — (auth), (tabs), product, order, checkout
-│   ├── components/           # Button, Pill, ProductCard, QuantityStepper, …
-│   ├── constants/theme.ts    # palette + spacing + typography tokens
-│   ├── data/                 # placeholder products + orders (still used until mobile reads from backend)
-│   ├── hooks/useAuth.tsx     # auth context + token storage
-│   ├── hooks/useCart.tsx     # cart context
-│   ├── lib/api.ts            # backend HTTP client
-│   └── lib/storage.ts        # SecureStore wrapper
-└── backend/                  # Hono + SQLite + Drizzle
+├── README.md
+├── logo.jpeg                  # brand source
+├── logo.png                   # background-removed PNG (used in-app)
+├── mobile/                    # Expo SDK 56 app
+│   ├── app/
+│   │   ├── (auth)/            # phone.tsx, verify.tsx
+│   │   ├── (tabs)/            # index, shop, cart, orders, profile
+│   │   ├── product/[id].tsx
+│   │   ├── order/[id].tsx
+│   │   ├── checkout.tsx
+│   │   └── _layout.tsx        # auth-gated stack
+│   ├── components/            # Logo, Button, ProductCard, QuantityStepper, …
+│   ├── constants/theme.ts     # tokens (palette, spacing, type, shadow)
+│   ├── data/                  # placeholder products + orders (until mobile reads from backend)
+│   ├── hooks/
+│   │   ├── useAuth.tsx        # auth context: sendOtp, verifyOtp, signOut
+│   │   └── useCart.tsx
+│   └── lib/
+│       ├── api.ts             # backend HTTP client
+│       ├── firebase.ts        # optional Firebase JS SDK init + signInWithCustomToken
+│       └── storage.ts         # SecureStore wrapper for the session token
+└── backend/
     ├── src/
-    │   ├── server.ts         # Hono app + route mounting
-    │   ├── db/schema.ts      # Drizzle schema
-    │   ├── lib/              # passwords, jwt, api-key helpers
-    │   ├── middleware/       # requireAuth, requireApiKey
-    │   └── routes/           # auth, products, orders, stock
-    ├── scripts/              # migrate.ts, seed.ts, create-api-key.ts
-    └── README.md             # endpoint + curl cookbook
+    │   ├── app.ts             # Hono app (route mounting)
+    │   ├── server.ts          # local Node server entry
+    │   ├── cloudFunction.ts   # Cloud Functions for Firebase entry
+    │   ├── db/
+    │   │   ├── schema.ts      # Drizzle schema (SQLite + Postgres)
+    │   │   ├── index.ts       # driver selection by DATABASE_URL
+    │   │   └── migrations/    # Drizzle-generated SQL
+    │   ├── lib/               # passwords, jwt, api-key, sms, firebase-admin, otp, phone
+    │   ├── middleware/        # requireAuth, requireApiKey
+    │   └── routes/            # auth, otp, products, orders, stock
+    ├── scripts/               # migrate.ts, seed.ts, create-api-key.ts
+    ├── firebase.json
+    ├── .firebaserc.example
+    └── README.md              # full curl cookbook + deploy paths
 ```
 
 ## Type check

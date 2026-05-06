@@ -7,15 +7,17 @@ import { requireAuth, type AuthVariables } from '../middleware/auth.ts';
 
 export const authRoutes = new Hono<{ Variables: AuthVariables }>();
 
+/**
+ * Email + password sign-up. Customers should use the phone-OTP flow
+ * (POST /auth/send-otp + /auth/verify-otp) instead — this route exists
+ * for staff and admin accounts that need a stable email login.
+ */
 authRoutes.post('/signup', async (c) => {
   const body = await c.req.json().catch(() => null);
   if (!body || typeof body !== 'object')
     return c.json({ error: 'invalid_body' }, 400);
 
-  const { email, password, firstName, lastName, phone } = body as Record<
-    string,
-    unknown
-  >;
+  const { email, password, firstName, lastName } = body as Record<string, unknown>;
 
   if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+$/.test(email))
     return c.json({ error: 'invalid_email' }, 400);
@@ -39,20 +41,16 @@ authRoutes.post('/signup', async (c) => {
       passwordHash: hashPassword(password),
       firstName: firstName.trim(),
       lastName: typeof lastName === 'string' ? lastName.trim() : '',
-      phone: typeof phone === 'string' ? phone.trim() : '',
     })
     .returning();
 
   const token = await signSession({
     sub: created.id,
-    email: created.email,
+    email: created.email ?? normalized,
     role: created.role,
   });
 
-  return c.json({
-    token,
-    user: publicUser(created),
-  });
+  return c.json({ token, user: publicUser(created) });
 });
 
 authRoutes.post('/login', async (c) => {
@@ -71,17 +69,20 @@ authRoutes.post('/login', async (c) => {
     .where(eq(schema.users.email, normalized))
     .limit(1);
 
-  // Constant-ish time: still hash a dummy password if user is missing so the
-  // attacker can't easily distinguish "no such email" from "wrong password".
-  const valid = user
-    ? verifyPassword(password, user.passwordHash)
-    : (verifyPassword(password, '$dummy$dummy$dummy'), false);
+  // Constant-ish time: still hash a dummy password if user is missing or
+  // has no passwordHash so the attacker can't trivially distinguish
+  // "no such email" / "phone-only account" from "wrong password".
+  const valid =
+    user && user.passwordHash
+      ? verifyPassword(password, user.passwordHash)
+      : (verifyPassword(password, 'salt:0000000000000000000000000000000000000000000000000000000000000000'), false);
 
-  if (!user || !valid) return c.json({ error: 'invalid_credentials' }, 401);
+  if (!user || !user.passwordHash || !valid)
+    return c.json({ error: 'invalid_credentials' }, 401);
 
   const token = await signSession({
     sub: user.id,
-    email: user.email,
+    email: user.email ?? normalized,
     role: user.role,
   });
   return c.json({ token, user: publicUser(user) });
@@ -102,9 +103,10 @@ function publicUser(u: typeof schema.users.$inferSelect) {
   return {
     id: u.id,
     email: u.email,
+    phoneNumber: u.phoneNumber,
+    phoneVerifiedAt: u.phoneVerifiedAt,
     firstName: u.firstName,
     lastName: u.lastName,
-    phone: u.phone,
     role: u.role,
     createdAt: u.createdAt,
   };
