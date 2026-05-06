@@ -6,6 +6,7 @@ import { otpRoutes } from './routes/otp.ts';
 import { productRoutes } from './routes/products.ts';
 import { orderRoutes } from './routes/orders.ts';
 import { prescriptionRoutes } from './routes/prescriptions.ts';
+import { chatRoutes } from './routes/chat.ts';
 import { stockRoutes } from './routes/stock.ts';
 
 export const app = new Hono();
@@ -34,6 +35,10 @@ app.get('/', (c) =>
         'GET /prescriptions/mine (auth)',
         'POST /prescriptions (auth)',
       ],
+      chat: [
+        'POST /chat/devices (auth) — publish E2EE public key',
+        'GET /chat/devices (auth) — list caller\'s devices',
+      ],
       stock: ['GET /api/stock (X-API-Key)', 'POST /api/stock/update (X-API-Key)'],
     },
   })
@@ -44,6 +49,7 @@ app.route('/auth', authRoutes);
 app.route('/products', productRoutes);
 app.route('/orders', orderRoutes);
 app.route('/prescriptions', prescriptionRoutes);
+app.route('/chat', chatRoutes);
 app.route('/api/stock', stockRoutes);
 
 app.notFound((c) => c.json({ error: 'not_found', path: c.req.path }, 404));

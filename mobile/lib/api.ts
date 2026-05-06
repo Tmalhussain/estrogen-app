@@ -206,4 +206,35 @@ export const api = {
       notes?: string;
     }
   ) => request<{ order: ApiOrder }>('/orders', { method: 'POST', body, token }),
+
+  /**
+   * Publish (or re-publish) this device's X25519 public key so
+   * pharmacists can encrypt to us. Idempotent — server returns the
+   * existing row if the same key is already on file.
+   */
+  publishChatDevice: (
+    token: string,
+    body: { publicKey: string; deviceLabel?: string }
+  ) =>
+    request<{
+      device: {
+        id: string;
+        userId: string;
+        publicKey: string;
+        deviceLabel: string;
+        createdAt: string;
+        lastSeenAt: string;
+      };
+      alreadyRegistered: boolean;
+    }>('/chat/devices', { method: 'POST', body, token }),
+
+  listChatDevices: (token: string) =>
+    request<{
+      devices: {
+        id: string;
+        publicKey: string;
+        deviceLabel: string;
+        lastSeenAt: string;
+      }[];
+    }>('/chat/devices', { token }),
 };

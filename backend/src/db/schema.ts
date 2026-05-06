@@ -246,10 +246,106 @@ export const stockMovements = sqliteTable(
   })
 );
 
+/**
+ * One row per device the user signs in from. The device's X25519 public
+ * key is published here so other parties can encrypt messages to it.
+ * The matching private key never leaves the device's secure storage.
+ *
+ * Multi-device support is intentional: one user can have a phone +
+ * tablet, and senders fan-out the ciphertext to every active device.
+ */
+export const chatDevices = sqliteTable(
+  'chat_devices',
+  {
+    id: id(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    publicKey: text('public_key').notNull(),
+    deviceLabel: text('device_label').notNull().default(''),
+    lastSeenAt: integer('last_seen_at', { mode: 'timestamp_ms' }),
+    revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    userIdx: index('chat_devices_user_idx').on(t.userId),
+  })
+);
+
+/**
+ * Two-party conversation between a customer and a pharmacist (or, in v2,
+ * any pair of users). Stored separately from messages so we can attach
+ * conversation-level metadata (assigned pharmacist, status, last
+ * activity) without rewriting every message.
+ */
+export const chatConversations = sqliteTable(
+  'chat_conversations',
+  {
+    id: id(),
+    customerId: text('customer_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    pharmacistId: text('pharmacist_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    status: text('status', { enum: ['open', 'closed'] })
+      .notNull()
+      .default('open'),
+    lastMessageAt: integer('last_message_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    customerIdx: index('chat_conv_customer_idx').on(t.customerId),
+    pharmacistIdx: index('chat_conv_pharmacist_idx').on(t.pharmacistId),
+  })
+);
+
+/**
+ * One row per message envelope addressed to a specific recipient device.
+ * Server stores ciphertext + nonce only; the plaintext lives only in
+ * RAM on sender + recipient devices. Server never has the keys to
+ * decrypt — that's the E2EE contract.
+ *
+ * `senderDeviceId` lets us drop a duplicate envelope on retransmit and
+ * lets the recipient verify continuity from the same device fingerprint
+ * across the conversation.
+ */
+export const chatMessages = sqliteTable(
+  'chat_messages',
+  {
+    id: id(),
+    conversationId: text('conversation_id')
+      .notNull()
+      .references(() => chatConversations.id, { onDelete: 'cascade' }),
+    senderUserId: text('sender_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    senderDeviceId: text('sender_device_id')
+      .notNull()
+      .references(() => chatDevices.id, { onDelete: 'cascade' }),
+    recipientDeviceId: text('recipient_device_id')
+      .notNull()
+      .references(() => chatDevices.id, { onDelete: 'cascade' }),
+    ciphertext: text('ciphertext').notNull(),
+    nonce: text('nonce').notNull(),
+    sentAt: createdAt(),
+    deliveredAt: integer('delivered_at', { mode: 'timestamp_ms' }),
+    readAt: integer('read_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => ({
+    convIdx: index('chat_msg_conv_idx').on(t.conversationId),
+    recipientIdx: index('chat_msg_recipient_idx').on(t.recipientDeviceId),
+  })
+);
+
 export type User = typeof users.$inferSelect;
 export type OtpAttempt = typeof otpAttempts.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Prescription = typeof prescriptions.$inferSelect;
+export type ChatDevice = typeof chatDevices.$inferSelect;
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type ChatMessage = typeof chatMessages.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;

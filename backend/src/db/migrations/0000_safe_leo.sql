@@ -10,6 +10,51 @@ CREATE TABLE `api_keys` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `api_keys_key_hash_unique` ON `api_keys` (`key_hash`);--> statement-breakpoint
+CREATE TABLE `chat_conversations` (
+	`id` text PRIMARY KEY NOT NULL,
+	`customer_id` text NOT NULL,
+	`pharmacist_id` text,
+	`status` text DEFAULT 'open' NOT NULL,
+	`last_message_at` integer,
+	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`customer_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`pharmacist_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
+CREATE INDEX `chat_conv_customer_idx` ON `chat_conversations` (`customer_id`);--> statement-breakpoint
+CREATE INDEX `chat_conv_pharmacist_idx` ON `chat_conversations` (`pharmacist_id`);--> statement-breakpoint
+CREATE TABLE `chat_devices` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`public_key` text NOT NULL,
+	`device_label` text DEFAULT '' NOT NULL,
+	`last_seen_at` integer,
+	`revoked_at` integer,
+	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `chat_devices_user_idx` ON `chat_devices` (`user_id`);--> statement-breakpoint
+CREATE TABLE `chat_messages` (
+	`id` text PRIMARY KEY NOT NULL,
+	`conversation_id` text NOT NULL,
+	`sender_user_id` text NOT NULL,
+	`sender_device_id` text NOT NULL,
+	`recipient_device_id` text NOT NULL,
+	`ciphertext` text NOT NULL,
+	`nonce` text NOT NULL,
+	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	`delivered_at` integer,
+	`read_at` integer,
+	FOREIGN KEY (`conversation_id`) REFERENCES `chat_conversations`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`sender_user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`sender_device_id`) REFERENCES `chat_devices`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`recipient_device_id`) REFERENCES `chat_devices`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `chat_msg_conv_idx` ON `chat_messages` (`conversation_id`);--> statement-breakpoint
+CREATE INDEX `chat_msg_recipient_idx` ON `chat_messages` (`recipient_device_id`);--> statement-breakpoint
 CREATE TABLE `order_items` (
 	`id` text PRIMARY KEY NOT NULL,
 	`order_id` text NOT NULL,

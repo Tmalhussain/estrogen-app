@@ -157,6 +157,14 @@ function RootStack() {
           contentStyle: { backgroundColor: '#000' },
         }}
       />
+      <Stack.Screen
+        name="(profile)"
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="chat"
+        options={{ animation: 'slide_from_right' }}
+      />
     </Stack>
   );
 }

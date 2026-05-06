@@ -1,4 +1,5 @@
 import {
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -6,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Logo } from '@/components/Logo';
 import { Pill } from '@/components/Pill';
@@ -21,19 +23,25 @@ type Row = {
   hint?: string;
   badge?: string;
   destructive?: boolean;
+  onPress?: () => void;
 };
 
 type Section = { title: string; rows: Row[] };
-
-type SectionAction = Row & { onPress?: () => void };
-type SectionWithAction = { title: string; rows: SectionAction[] };
 
 function buildSections(args: {
   email: string;
   phone: string;
   firstName: string;
+  router: ReturnType<typeof useRouter>;
   onSignOut: () => void;
-}): SectionWithAction[] {
+}): Section[] {
+  const go = (path: string) => () => args.router.push(path as never);
+  const openWhatsApp = () => {
+    Linking.openURL(
+      'https://wa.me/966500000000?text=' +
+        encodeURIComponent('Hi, I have a question about my Estrogen Pharmacy order.')
+    );
+  };
   return [
     {
       title: 'Account',
@@ -42,34 +50,85 @@ function buildSections(args: {
           icon: 'person-outline',
           label: 'Personal info',
           value: `${args.firstName} · ${args.phone || args.email}`,
+          onPress: go('/(profile)/personal'),
         },
-        { icon: 'medkit-outline', label: 'Medical profile', hint: 'Allergies, conditions' },
-        { icon: 'location-outline', label: 'Addresses', value: '2 saved' },
-        { icon: 'card-outline', label: 'Payment methods', value: 'Mada · STC Pay' },
+        {
+          icon: 'medkit-outline',
+          label: 'Medical profile',
+          hint: 'Allergies, conditions',
+          onPress: go('/(profile)/medical'),
+        },
+        {
+          icon: 'location-outline',
+          label: 'Addresses',
+          value: '2 saved',
+          onPress: go('/(profile)/addresses'),
+        },
+        {
+          icon: 'card-outline',
+          label: 'Payment methods',
+          value: 'Mada · STC Pay',
+          onPress: go('/(profile)/payment'),
+        },
       ],
     },
     {
       title: 'Pharmacy',
       rows: [
-        { icon: 'document-text-outline', label: 'Prescriptions', value: '3 active' },
-        { icon: 'repeat-outline', label: 'Subscriptions', hint: 'Auto-refill' },
-        { icon: 'chatbubbles-outline', label: 'Chat with a pharmacist', badge: 'New' },
+        {
+          icon: 'document-text-outline',
+          label: 'Prescriptions',
+          value: '3 active',
+          onPress: go('/(profile)/prescriptions'),
+        },
+        {
+          icon: 'repeat-outline',
+          label: 'Subscriptions',
+          hint: 'Auto-refill',
+          onPress: go('/(profile)/subscriptions'),
+        },
+        {
+          icon: 'chatbubbles-outline',
+          label: 'Chat with a pharmacist',
+          badge: 'New',
+          onPress: go('/chat'),
+        },
       ],
     },
     {
       title: 'App',
       rows: [
         { icon: 'language-outline', label: 'Language', value: 'English' },
-        { icon: 'notifications-outline', label: 'Notifications' },
-        { icon: 'lock-closed-outline', label: 'Privacy & data' },
+        {
+          icon: 'notifications-outline',
+          label: 'Notifications',
+          onPress: go('/(profile)/notifications'),
+        },
+        {
+          icon: 'lock-closed-outline',
+          label: 'Privacy & data',
+          onPress: go('/(profile)/privacy'),
+        },
       ],
     },
     {
       title: 'Support',
       rows: [
-        { icon: 'help-circle-outline', label: 'Help center' },
-        { icon: 'logo-whatsapp', label: 'Chat on WhatsApp' },
-        { icon: 'document-outline', label: 'Terms & privacy' },
+        {
+          icon: 'help-circle-outline',
+          label: 'Help center',
+          onPress: go('/(profile)/help'),
+        },
+        {
+          icon: 'logo-whatsapp',
+          label: 'Chat on WhatsApp',
+          onPress: openWhatsApp,
+        },
+        {
+          icon: 'document-outline',
+          label: 'Terms & conditions',
+          onPress: go('/(profile)/terms'),
+        },
         {
           icon: 'log-out-outline',
           label: 'Log out',
@@ -83,6 +142,7 @@ function buildSections(args: {
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user, signOut } = useAuth();
 
   const fullName = user
@@ -94,6 +154,7 @@ export default function ProfileScreen() {
     email: user?.email ?? '',
     phone: user?.phoneNumber ?? '',
     firstName: user?.firstName ?? 'You',
+    router,
     onSignOut: () => {
       void signOut();
     },
@@ -111,7 +172,11 @@ export default function ProfileScreen() {
             <View style={styles.avatar}>
               <Logo size={42} variant="mark" />
             </View>
-            <Pressable style={styles.editBtn}>
+            <Pressable
+              style={styles.editBtn}
+              onPress={() => router.push('/(profile)/personal' as never)}
+              accessibilityLabel="Edit personal info"
+            >
               <Ionicons name="create-outline" size={18} color={colors.primary} />
             </Pressable>
           </View>
