@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
-import { Stack } from 'expo-router';
+import { Platform, View, ActivityIndicator } from 'react-native';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import {
   Tajawal_700Bold,
 } from '@expo-google-fonts/tajawal';
 import { CartProvider } from '@/hooks/useCart';
+import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { colors } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -38,27 +39,13 @@ export default function RootLayout() {
     SplashScreen.hideAsync().catch(() => {});
 
     // Web fallback: RN-Web sets -apple-system on every Text that lacks an
-    // explicit fontFamily. Override the base RN-Web Text class so unstyled
-    // body copy picks up DM Sans. Headings already set DMSans_700Bold via
-    // their own atomic class and win on later source order; Ionicons set
-    // font-family inline and inline always wins. Native (iOS/Android) is
-    // unaffected.
+    // explicit fontFamily. Discover atomic class hashes that encode an
+    // explicit fontFamily (DMSans / Tajawal / ionicons) and exempt them so
+    // headings stay bold and icons keep their glyph font; everything else
+    // picks up DMSans_400Regular. Native is unaffected.
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const id = 'estrogen-base-font';
       if (!document.getElementById(id)) {
-        const style = document.createElement('style');
-        style.id = id;
-        // RN-Web's atomic stylesheet sets `font-family: -apple-system` on
-        // every Text via `.css-146c3p1`. Headings, Ionicons glyphs, and
-        // anything else with an explicit `fontFamily` style get an
-        // additional atomic class like `.r-qjfcrk` (DMSans_700Bold) at the
-        // same specificity — those win on source order.
-        //
-        // To set a body-text default of DMSans_400Regular without clobbering
-        // those explicit classes, we discover at runtime which atomic class
-        // hashes encode an explicit font-family and exempt them via
-        // :not(.<hash>) selectors. This is robust against RN-Web changing
-        // its hash algorithm — we read the live stylesheet.
         const exempt = new Set<string>();
         for (const sheet of Array.from(document.styleSheets)) {
           try {
@@ -80,13 +67,14 @@ export default function RootLayout() {
           }
         }
         const notSel = [...exempt].map((c) => `:not(.${c})`).join('');
+        const style = document.createElement('style');
+        style.id = id;
         style.textContent = `
           .css-146c3p1${notSel}, .css-11aywtz${notSel} {
             font-family: 'DMSans_400Regular', -apple-system, BlinkMacSystemFont,
               'Segoe UI', Roboto, sans-serif;
           }
         `;
-        document.head.appendChild(style);
         document.head.appendChild(style);
       }
     }
@@ -97,31 +85,70 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaProvider>
-        <CartProvider>
-          <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.bg },
-              animation: 'fade_from_bottom',
-            }}
-          >
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="product/[id]"
-              options={{ presentation: 'card', animation: 'slide_from_right' }}
-            />
-            <Stack.Screen
-              name="checkout"
-              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-            />
-            <Stack.Screen
-              name="order/[id]"
-              options={{ presentation: 'card', animation: 'slide_from_right' }}
-            />
-          </Stack>
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <StatusBar style="dark" />
+            <RootStack />
+          </CartProvider>
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/**
+ * Inner stack so we can read auth state and decide where to send the user.
+ *
+ * - While auth is loading (token check on first launch) we show a tiny
+ *   spinner and don't navigate.
+ * - Signed-out users on a (tabs)/protected route get bounced to /(auth)/login.
+ * - Signed-in users sitting on /(auth)/* get bounced into /(tabs).
+ */
+function RootStack() {
+  const { status } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    const inAuthGroup = segments[0] === '(auth)';
+    if (status === 'signed-out' && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (status === 'signed-in' && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [status, segments, router]);
+
+  if (status === 'loading') {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.bg },
+        animation: 'fade_from_bottom',
+      }}
+    >
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen
+        name="product/[id]"
+        options={{ presentation: 'card', animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="checkout"
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="order/[id]"
+        options={{ presentation: 'card', animation: 'slide_from_right' }}
+      />
+    </Stack>
   );
 }

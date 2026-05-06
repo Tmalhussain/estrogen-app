@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Logo } from '@/components/Logo';
 import { Pill } from '@/components/Pill';
+import { useAuth } from '@/hooks/useAuth';
 import { colors, font, radius, space } from '@/constants/theme';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -24,45 +25,79 @@ type Row = {
 
 type Section = { title: string; rows: Row[] };
 
-const sections: Section[] = [
-  {
-    title: 'Account',
-    rows: [
-      { icon: 'person-outline', label: 'Personal info', value: 'Mishari · +966 50 ••• ••42' },
-      { icon: 'medkit-outline', label: 'Medical profile', hint: 'Allergies, conditions' },
-      { icon: 'location-outline', label: 'Addresses', value: '2 saved' },
-      { icon: 'card-outline', label: 'Payment methods', value: 'Mada · STC Pay' },
-    ],
-  },
-  {
-    title: 'Pharmacy',
-    rows: [
-      { icon: 'document-text-outline', label: 'Prescriptions', value: '3 active' },
-      { icon: 'repeat-outline', label: 'Subscriptions', hint: 'Auto-refill' },
-      { icon: 'chatbubbles-outline', label: 'Chat with a pharmacist', badge: 'New' },
-    ],
-  },
-  {
-    title: 'App',
-    rows: [
-      { icon: 'language-outline', label: 'Language', value: 'English' },
-      { icon: 'notifications-outline', label: 'Notifications' },
-      { icon: 'lock-closed-outline', label: 'Privacy & data' },
-    ],
-  },
-  {
-    title: 'Support',
-    rows: [
-      { icon: 'help-circle-outline', label: 'Help center' },
-      { icon: 'logo-whatsapp', label: 'Chat on WhatsApp' },
-      { icon: 'document-outline', label: 'Terms & privacy' },
-      { icon: 'log-out-outline', label: 'Log out', destructive: true },
-    ],
-  },
-];
+type SectionAction = Row & { onPress?: () => void };
+type SectionWithAction = { title: string; rows: SectionAction[] };
+
+function buildSections(args: {
+  email: string;
+  phone: string;
+  firstName: string;
+  onSignOut: () => void;
+}): SectionWithAction[] {
+  return [
+    {
+      title: 'Account',
+      rows: [
+        {
+          icon: 'person-outline',
+          label: 'Personal info',
+          value: `${args.firstName} · ${args.phone || args.email}`,
+        },
+        { icon: 'medkit-outline', label: 'Medical profile', hint: 'Allergies, conditions' },
+        { icon: 'location-outline', label: 'Addresses', value: '2 saved' },
+        { icon: 'card-outline', label: 'Payment methods', value: 'Mada · STC Pay' },
+      ],
+    },
+    {
+      title: 'Pharmacy',
+      rows: [
+        { icon: 'document-text-outline', label: 'Prescriptions', value: '3 active' },
+        { icon: 'repeat-outline', label: 'Subscriptions', hint: 'Auto-refill' },
+        { icon: 'chatbubbles-outline', label: 'Chat with a pharmacist', badge: 'New' },
+      ],
+    },
+    {
+      title: 'App',
+      rows: [
+        { icon: 'language-outline', label: 'Language', value: 'English' },
+        { icon: 'notifications-outline', label: 'Notifications' },
+        { icon: 'lock-closed-outline', label: 'Privacy & data' },
+      ],
+    },
+    {
+      title: 'Support',
+      rows: [
+        { icon: 'help-circle-outline', label: 'Help center' },
+        { icon: 'logo-whatsapp', label: 'Chat on WhatsApp' },
+        { icon: 'document-outline', label: 'Terms & privacy' },
+        {
+          icon: 'log-out-outline',
+          label: 'Log out',
+          destructive: true,
+          onPress: args.onSignOut,
+        },
+      ],
+    },
+  ];
+}
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const { user, signOut } = useAuth();
+
+  const fullName = user
+    ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}`
+    : 'Estrogen customer';
+  const handle = user?.phone || user?.email || '';
+
+  const sections = buildSections({
+    email: user?.email ?? '',
+    phone: user?.phone ?? '',
+    firstName: user?.firstName ?? 'You',
+    onSignOut: () => {
+      void signOut();
+    },
+  });
 
   return (
     <ScrollView
@@ -80,8 +115,8 @@ export default function ProfileScreen() {
               <Ionicons name="create-outline" size={18} color={colors.primary} />
             </Pressable>
           </View>
-          <Text style={styles.userName}>Mishari Al-Husain</Text>
-          <Text style={styles.userPhone}>+966 50 ••• ••42</Text>
+          <Text style={styles.userName}>{fullName}</Text>
+          <Text style={styles.userPhone}>{handle}</Text>
           <View style={styles.statRow}>
             <Stat value="14" label="Orders" />
             <View style={styles.statDivider} />
@@ -98,7 +133,10 @@ export default function ProfileScreen() {
           <View style={styles.card}>
             {section.rows.map((row, idx) => (
               <View key={row.label}>
-                <Pressable style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
+                <Pressable
+                  onPress={row.onPress}
+                  style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+                >
                   <View
                     style={[
                       styles.rowIcon,
