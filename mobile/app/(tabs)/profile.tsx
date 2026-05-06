@@ -121,8 +121,6 @@ export default function ProfileScreen() {
             <Stat value="14" label="Orders" />
             <View style={styles.statDivider} />
             <Stat value="3" label="Active Rx" />
-            <View style={styles.statDivider} />
-            <Stat value="4.9" label="Loyalty" icon="star" />
           </View>
         </View>
       </View>
@@ -188,29 +186,11 @@ export default function ProfileScreen() {
   );
 }
 
-function Stat({
-  value,
-  label,
-  icon,
-}: {
-  value: string;
-  label: string;
-  icon?: React.ComponentProps<typeof Ionicons>['name'];
-}) {
+function Stat({ value, label }: { value: string; label: string }) {
   return (
     <View style={styles.statCell}>
       <Text style={styles.statValue}>{value}</Text>
-      <View style={styles.statLabelRow}>
-        <Text style={styles.statLabel}>{label}</Text>
-        {icon ? (
-          <Ionicons
-            name={icon}
-            size={11}
-            color="rgba(255,255,255,0.85)"
-            style={{ marginLeft: 4 }}
-          />
-        ) : null}
-      </View>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
@@ -279,12 +259,8 @@ const styles = StyleSheet.create({
     fontWeight: font.weight.bold,
     fontVariant: ['tabular-nums'],
   },
-  statLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
   statLabel: {
+    marginTop: 2,
     fontSize: font.size.xxs,
     color: 'rgba(255,255,255,0.85)',
     fontWeight: font.weight.semi,
