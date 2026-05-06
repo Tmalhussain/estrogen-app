@@ -160,7 +160,7 @@ function Stat({
   icon?: React.ComponentProps<typeof Ionicons>['name'];
 }) {
   return (
-    <View style={{ alignItems: 'center' }}>
+    <View style={styles.statCell}>
       <Text style={styles.statValue}>{value}</Text>
       <View style={styles.statLabelRow}>
         <Text style={styles.statLabel}>{label}</Text>
@@ -223,10 +223,15 @@ const styles = StyleSheet.create({
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-around',
     backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: radius.lg,
     paddingVertical: space.md,
     marginTop: space.lg,
+  },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
   },
   statValue: {
     fontSize: font.size.xl,
@@ -247,9 +252,8 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    height: 30,
-    flex: 0.04,
+    height: 32,
+    backgroundColor: 'rgba(255,255,255,0.35)',
     alignSelf: 'center',
   },
   section: {
