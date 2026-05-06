@@ -37,14 +37,16 @@ function StepperButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      hitSlop={6}
+      hitSlop={10}
       style={({ pressed }) => [
         styles.btn,
         pressed && !disabled && { backgroundColor: colors.primaryDim },
         disabled && { opacity: 0.4 },
       ]}
+      accessibilityRole="button"
+      accessibilityLabel={icon === 'add' ? 'Increase quantity' : 'Decrease quantity'}
     >
-      <Ionicons name={icon} size={18} color={colors.primary} />
+      <Ionicons name={icon} size={20} color={colors.primary} />
     </Pressable>
   );
 }
@@ -56,12 +58,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgAlt,
     borderRadius: radius.pill,
     paddingHorizontal: space.xs,
-    height: 40,
+    height: 44,
   },
   btn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
