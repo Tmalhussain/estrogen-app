@@ -36,3 +36,4 @@ yarn-error.*
 # IDE
 .vscode/
 .idea/
+.design-audit-20260506/
