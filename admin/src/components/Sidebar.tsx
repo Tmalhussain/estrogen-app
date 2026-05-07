@@ -20,7 +20,14 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const initial =
     user?.firstName?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'E';
-  const roleLabel = user?.role === 'admin' ? 'Admin' : user?.role === 'pharmacist' ? 'Pharmacist' : 'Staff';
+  const roleLabel =
+    user?.role === 'owner'
+      ? 'Owner'
+      : user?.role === 'admin'
+      ? 'Admin'
+      : user?.role === 'pharmacist'
+      ? 'Pharmacist'
+      : 'Staff';
 
   return (
     <aside style={styles.aside}>

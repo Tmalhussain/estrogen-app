@@ -99,13 +99,23 @@ export default function Today() {
                   const placedAt = new Date(o.placedAt);
                   const hh = placedAt.getHours().toString().padStart(2, '0');
                   const mm = placedAt.getMinutes().toString().padStart(2, '0');
+                  const customerName =
+                    [o.customerFirstName, o.customerLastName]
+                      .filter(Boolean)
+                      .join(' ')
+                      .trim() || '—';
                   return (
                     <tr key={o.id}>
                       <td style={{ ...styles.td }}>
                         <span className="mono">EST-{o.id.slice(-4).toUpperCase()}</span>
                       </td>
                       <td style={styles.td}>
-                        <span style={{ color: '#8A7A8A' }}>—</span>
+                        <div style={{ fontWeight: 500 }}>{customerName}</div>
+                        {o.customerPhone ? (
+                          <div className="mono" style={{ fontSize: 11, color: '#8A7A8A' }}>
+                            {o.customerPhone}
+                          </div>
+                        ) : null}
                       </td>
                       <td style={{ ...styles.td }}>
                         <span className="mono">SAR {SAR.format(o.total)}</span>

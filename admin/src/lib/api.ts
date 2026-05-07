@@ -15,7 +15,7 @@ export type ApiUser = {
   phoneNumber: string | null;
   firstName: string;
   lastName: string;
-  role: 'customer' | 'pharmacist' | 'admin';
+  role: 'customer' | 'pharmacist' | 'admin' | 'owner';
   createdAt: string;
 };
 
@@ -138,22 +138,153 @@ function safeParse(text: string): unknown {
   }
 }
 
+export type StaffOrder = ApiOrder & {
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerPhone: string | null;
+};
+
+export type PendingPrescription = {
+  id: string;
+  userId: string;
+  productId: string;
+  status: 'pending_review' | 'approved' | 'rejected' | 'expired';
+  imagePath: string | null;
+  prescribedBy: string | null;
+  notes: string | null;
+  createdAt: string;
+  productName: string | null;
+  productNameAr: string | null;
+  productImage: string | null;
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerPhone: string | null;
+};
+
+export type AuditRow = {
+  id: string;
+  actorUserId: string | null;
+  actorRole: string;
+  action: string;
+  entityType: string | null;
+  entityId: string | null;
+  beforeJson: string | null;
+  afterJson: string | null;
+  ipAddr: string | null;
+  userAgent: string | null;
+  createdAt: string;
+};
+
 export const api = {
+  // Auth — staff endpoint rejects role==='customer' at the door, so a
+  // leaked customer credential cannot open the admin even if the public
+  // /auth/login is later relaxed.
   login: (body: { email: string; password: string }) =>
-    request<{ token: string; user: ApiUser }>('/auth/login', { method: 'POST', body }),
+    request<{ token: string; user: ApiUser }>('/staff/auth/login', {
+      method: 'POST',
+      body,
+    }),
   me: () => request<{ user: ApiUser }>('/auth/me'),
 
+  // Catalog — staff endpoints with full CRUD; every mutation is audited.
   listProducts: (params?: { q?: string }) => {
     const qs = new URLSearchParams();
     if (params?.q) qs.set('q', params.q);
     const query = qs.toString();
-    return request<{ products: ApiProduct[] }>(`/products${query ? `?${query}` : ''}`);
+    return request<{ products: ApiProduct[] }>(
+      `/staff/products${query ? `?${query}` : ''}`
+    );
   },
   getProduct: (id: string) => request<{ product: ApiProduct }>(`/products/${id}`),
+  createProduct: (body: Partial<ApiProduct>) =>
+    request<{ product: ApiProduct }>('/staff/products', { method: 'POST', body }),
+  updateProduct: (id: string, body: Partial<ApiProduct>) =>
+    request<{ product: ApiProduct }>(`/staff/products/${id}`, {
+      method: 'PATCH',
+      body,
+    }),
+  deleteProduct: (id: string) =>
+    request<{ ok: true }>(`/staff/products/${id}`, { method: 'DELETE' }),
 
-  // BACKEND-DEPENDENT: these endpoints don't exist yet for staff.
-  // They will land in the next backend session (see TODOS.md).
-  // For now the admin renders empty states and reads what's public.
-  listOrders: () => request<{ orders: ApiOrder[] }>('/orders'),
-  getOrder: (id: string) => request<{ order: ApiOrder }>(`/orders/${id}`),
+  // Orders — staff sees ALL orders (with customer name/phone joined).
+  listOrders: (params?: { status?: ApiOrder['status'] }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set('status', params.status);
+    const query = qs.toString();
+    return request<{ orders: StaffOrder[] }>(
+      `/staff/orders${query ? `?${query}` : ''}`
+    );
+  },
+  getOrder: (id: string) =>
+    request<{
+      order: ApiOrder & {
+        items: { id: string; productId: string; quantity: number; priceAtOrder: number }[];
+        customer:
+          | { id: string; firstName: string; lastName: string; phoneNumber: string | null; email: string | null }
+          | null;
+      };
+    }>(`/staff/orders/${id}`),
+  updateOrderStatus: (id: string, status: ApiOrder['status']) =>
+    request<{ order: ApiOrder }>(`/staff/orders/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    }),
+
+  // Customers — search-only by design. PDPL lockdown.
+  searchCustomer: (params: { phone?: string; email?: string; orderId?: string }) => {
+    const qs = new URLSearchParams();
+    if (params.phone) qs.set('phone', params.phone);
+    if (params.email) qs.set('email', params.email);
+    if (params.orderId) qs.set('orderId', params.orderId);
+    return request<{ customer: ApiUser | null }>(`/staff/customers?${qs.toString()}`);
+  },
+  getCustomer: (id: string) =>
+    request<{
+      customer: ApiUser;
+      orders: { id: string; status: ApiOrder['status']; total: number; placedAt: string }[];
+      prescriptions: {
+        id: string;
+        productId: string;
+        status: 'pending_review' | 'approved' | 'rejected' | 'expired';
+        approvedAt: string | null;
+        expiresAt: string | null;
+        createdAt: string;
+        productName: string | null;
+      }[];
+    }>(`/staff/customers/${id}`),
+  getCustomerMedical: (id: string) =>
+    request<{
+      customer: { id: string; firstName: string; lastName: string };
+      medical: {
+        pregnancyStatus: string | null;
+        bloodType: string | null;
+        allergies: string[];
+        conditions: string[];
+        note?: string;
+      };
+    }>(`/staff/customers/${id}/medical`),
+
+  // Prescription review — pharmacist queue.
+  pendingPrescriptions: () =>
+    request<{ prescriptions: PendingPrescription[] }>(
+      `/staff/prescriptions/pending`
+    ),
+  approvePrescription: (id: string, body?: { expiresAt?: string }) =>
+    request(`/staff/prescriptions/${id}/approve`, { method: 'POST', body: body ?? {} }),
+  rejectPrescription: (id: string, reason?: string) =>
+    request(`/staff/prescriptions/${id}/reject`, {
+      method: 'POST',
+      body: reason ? { reason } : {},
+    }),
+
+  // Audit forensics (read-only).
+  audit: (params?: { limit?: number; entityType?: string; entityId?: string; actorUserId?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.entityType) qs.set('entityType', params.entityType);
+    if (params?.entityId) qs.set('entityId', params.entityId);
+    if (params?.actorUserId) qs.set('actorUserId', params.actorUserId);
+    const query = qs.toString();
+    return request<{ rows: AuditRow[] }>(`/staff/audit${query ? `?${query}` : ''}`);
+  },
 };

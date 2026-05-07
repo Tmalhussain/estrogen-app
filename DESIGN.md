@@ -172,6 +172,40 @@ If you can't draw a clear line between a mobile and admin surface and say "these
 - RTL support: layout mirrors when locale=ar; use logical properties (`margin-inline-start`, `padding-inline-end`) where supported, fall back to `I18nManager.isRTL` flips on RN.
 - Currency display: always "SAR ##,###.##" with **mono numerics** so columns align.
 
+## Architecture lockdowns
+
+These rules are enforced at code-review time. Anything that violates one is a P0 finding regardless of how reasonable the change otherwise looks. Keep this section short and load-bearing.
+
+### Customer endpoints are search-only
+
+There is **no list-all-customers endpoint**, even paginated, even staff-gated, even read-only. Looking up a customer requires knowing something specific about them: phone, email, or order ID.
+
+- **Why:** PDPL says minimize customer-data access. Product trust says nobody on the operator team should be able to scroll through Estrogen's customer list. The medical inferences from a women's-health pharmacy are unusually sensitive.
+- **Where this is enforced:** [backend/src/routes/staff.ts](backend/src/routes/staff.ts) — `GET /staff/customers` requires at least one search parameter; only ever returns 0 or 1 customer.
+- **If you need bulk:** write a one-shot CLI script with the business rationale logged to `audit_log` as `customer.bulk_op` and an explicit reviewer.
+
+### Mutations write audit rows in the same transaction as the data write
+
+Every staff mutation route MUST call `audit(tx, ...)` inside its own `db.transaction`. The audit row commits with the data; if either fails, both roll back. The skeleton:
+
+```ts
+await db.transaction(async (tx) => {
+  const [before] = await tx.select()...where(...).limit(1);
+  const [after] = await tx.update()...returning();
+  await audit(tx, actor, { action: 'thing.update', entityType: 'thing', entityId: id, before, after });
+});
+```
+
+Customer-data reads (search hit, profile open, medical-profile view) call the fire-and-forget `auditRead(actor, ...)` instead. Read failures must not fail the response.
+
+### Direct table reads bypass `liveX()` only with a comment block
+
+Any `db.select().from(schema.users | schema.products | schema.orders)` must compose `liveUsers()` / `liveProducts()` / `liveOrders()` into the WHERE clause. Soft-deleted rows MUST NOT leak into a public response. Audit-only paths that need to see deleted rows must include the comment `// intentionally bypasses liveX()` on the query.
+
+### No purple/violet gradients, no 3-icon-circles, no system-ui
+
+These three are the AI-slop tells. They never ship on this product.
+
 ## Decisions Log
 
 | Date | Decision | Rationale |

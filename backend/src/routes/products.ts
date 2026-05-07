@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
-import { and, eq, inArray, like, or } from 'drizzle-orm';
+import { and, eq, like, or } from 'drizzle-orm';
 import { db, schema } from '../db/index.ts';
 import { verifySession } from '../lib/jwt.ts';
+import { liveProducts } from '../lib/live.ts';
 
 export const productRoutes = new Hono();
 
@@ -70,7 +71,9 @@ productRoutes.get('/', async (c) => {
   const rxOnly = c.req.query('rx') === 'true';
   const q = c.req.query('q')?.trim();
 
-  const conditions = [] as ReturnType<typeof eq>[];
+  // Always start with the live filter — deleted products MUST NOT
+  // appear in any public listing. See lib/live.ts.
+  const conditions: unknown[] = [liveProducts()];
   if (category) conditions.push(eq(schema.products.category, category as never));
   if (inStockOnly) conditions.push(eq(schema.products.inStock, true));
   if (rxOnly) conditions.push(eq(schema.products.rxRequired, true));
@@ -85,13 +88,10 @@ productRoutes.get('/', async (c) => {
     );
   }
 
-  const rows =
-    conditions.length > 0
-      ? await db
-          .select()
-          .from(schema.products)
-          .where(and(...conditions))
-      : await db.select().from(schema.products);
+  const rows = await db
+    .select()
+    .from(schema.products)
+    .where(and(...(conditions as Parameters<typeof and>)));
 
   const claims = await getOptionalUser(c);
   const approved = await approvedProductIds(claims?.sub ?? null);
@@ -103,7 +103,7 @@ productRoutes.get('/:id', async (c) => {
   const [row] = await db
     .select()
     .from(schema.products)
-    .where(eq(schema.products.id, id))
+    .where(and(eq(schema.products.id, id), liveProducts()))
     .limit(1);
   if (!row) return c.json({ error: 'product_not_found' }, 404);
   const claims = await getOptionalUser(c);
@@ -140,7 +140,7 @@ productRoutes.get('/by-barcode/:code', async (c) => {
   const [product] = await db
     .select()
     .from(schema.products)
-    .where(eq(schema.products.barcode, code))
+    .where(and(eq(schema.products.barcode, code), liveProducts()))
     .limit(1);
   if (!product) return c.json({ error: 'not_in_catalog', barcode: code }, 404);
 

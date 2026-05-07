@@ -211,14 +211,16 @@ if (adminUser.length === 0) {
     .values({
       email: adminEmail,
       passwordHash: hashPassword('admin12345'),
-      firstName: 'Admin',
+      firstName: 'Mishari',
       lastName: '',
-      role: 'admin',
+      // Owner = super-admin. The single business owner. See plan-eng-review
+      // rec 3A — the role enum carries the owner bit; no separate boolean.
+      role: 'owner',
     })
     .run();
-  console.log(`created admin user ${adminEmail} / admin12345`);
+  console.log(`created owner user ${adminEmail} / admin12345 (role=owner)`);
 } else {
-  console.log('admin user already present');
+  console.log('owner user already present');
 }
 
 // Deterministic test API key. Plaintext is committed to source so curl

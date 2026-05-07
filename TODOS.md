@@ -4,9 +4,9 @@ Deferred work, captured here so it doesn't fall through. Each entry has enough c
 
 ## Backend — Operator's Cockpit foundation
 
-These all came out of the 2026-05-07 `/plan-eng-review` of the admin design doc (`~/.gstack/projects/Estrogenpharmacyapp/mishari-import-full-app-design-20260507-133809.md`). The admin web frontend has been scaffolded against the existing public endpoints; these backend additions are what unblock the rest of its functionality.
+These all came out of the 2026-05-07 `/plan-eng-review` of the admin design doc (`~/.gstack/projects/Estrogenpharmacyapp/mishari-import-full-app-design-20260507-133809.md`). **Recs 1A, 2A, 3A, 4A, 6A, 7A shipped 2026-05-07** — see commit history. Recs 5A and 8A remain.
 
-### Rec 1A — Add `POST /staff/auth/login` (defense in depth)
+### ✅ Rec 1A — `POST /staff/auth/login` (shipped)
 
 **What:** Mirror `/auth/login` but reject `role==='customer'`. Identical body; identical response. Different endpoint so the audit log can distinguish staff logins from customer logins by URL.
 
@@ -14,7 +14,7 @@ These all came out of the 2026-05-07 `/plan-eng-review` of the admin design doc 
 
 **Acceptance:** New route in `backend/src/routes/auth.ts` (or the new `staff.ts`); customer login attempt returns 403 `staff_only`; admin/pharmacist/owner login works as before; admin web `lib/api.ts` switches `/auth/login` → `/staff/auth/login`; client-side gate in `AuthContext.tsx` removed.
 
-### Rec 2A — Audit middleware + `audit()` and `auditRead()` helpers
+### ✅ Rec 2A — Audit middleware + `audit()` and `auditRead()` (shipped)
 
 **What:** Implement the audit log. New table `audit_log` in [backend/src/db/schema.ts](backend/src/db/schema.ts). New module `backend/src/lib/audit.ts` exporting:
 - `audit(tx, { action, entityType, entityId, before, after })` — write inside a Drizzle txn. Mutations must call this.
@@ -43,7 +43,7 @@ export const auditLog = sqliteTable('audit_log', {
 
 **Acceptance:** every staff mutating endpoint writes one audit row in the same txn as the data write. Every staff read of customer data writes one fire-and-forget row. Drizzle migration generated and applied. Seed script unaffected.
 
-### Rec 3A — Replace `isOwner` boolean with `'owner'` in role enum
+### ✅ Rec 3A — `'owner'` in role enum (shipped)
 
 **What:** Drop the future `isOwner` boolean column entirely. Extend `users.role` enum from `'customer' | 'pharmacist' | 'admin'` → `'customer' | 'pharmacist' | 'admin' | 'owner'`. JWT `SessionClaims` typing updated. Mishari's user row gets `role: 'owner'`.
 
@@ -51,7 +51,7 @@ export const auditLog = sqliteTable('audit_log', {
 
 **Acceptance:** schema enum updated; migration generated; JWT type updated; `verifySession` and `signSession` accept new role value; admin sidebar's role label maps `'owner'` → "Owner".
 
-### Rec 4A — Architecture lockdown: never list-all customers
+### ✅ Rec 4A — Lockdown: never list-all customers (shipped)
 
 **What:** Add a "## Architecture lockdowns" section to [DESIGN.md](DESIGN.md) with this rule. Add the same as a code comment at the top of the staff customers route handler when it's built (`backend/src/routes/staff.ts`).
 
@@ -67,7 +67,7 @@ export const auditLog = sqliteTable('audit_log', {
 
 **Acceptance:** decision recorded in README.md; backend deploys to chosen target; admin `vite.config.ts` proxy points to the production URL via env var; CORS configured if cross-origin.
 
-### Rec 6A — Staff customer endpoints + audit on reads
+### ✅ Rec 6A — Staff customer endpoints + audit on reads (shipped)
 
 **What:** New endpoints under `/staff/customers`:
 - `GET /staff/customers?phone=X` (or `?email=` or `?orderId=`) → returns 0 or 1 customer; writes `customer.search` audit row with redacted query.
@@ -78,7 +78,7 @@ export const auditLog = sqliteTable('audit_log', {
 
 **Acceptance:** all three endpoints exist; each writes an audit row via `auditRead()`; admin Customers page resolves a search; medical-profile modal opens with audit visible in the audit_log table.
 
-### Rec 7A — Soft-delete columns + live-row query helpers
+### ✅ Rec 7A — Soft-delete + `liveX()` helpers (shipped)
 
 **What:** Add `deletedAt: integer({ mode: 'timestamp' })` to `users`, `products`, `orders`. Add helpers `liveUsers()`, `liveProducts()`, `liveOrders()` that wrap the base query with `WHERE deleted_at IS NULL`. Document in DESIGN.md: "Never query users/products/orders directly without using the live-row helper."
 
@@ -100,11 +100,23 @@ export const auditLog = sqliteTable('audit_log', {
 
 These don't come from the eng review; they're what the scaffolded admin frontend needs to actually transact.
 
-### Staff product CRUD
+### ✅ Staff product CRUD (shipped)
 
-**What:** `POST /staff/products`, `PATCH /staff/products/:id`, `DELETE /staff/products/:id` (soft-delete via `deletedAt`). Auth-required. Audit-logged via Rec 2A.
+`POST /staff/products`, `PATCH /staff/products/:id`, `DELETE /staff/products/:id` (soft-delete) all live. Audited per mutation. The admin Catalog page still needs the edit-form UI — currently the drawer is read-only.
 
-**Why:** The admin Catalog page renders a table and an edit drawer but cannot save. Until these exist, "adding real medicines" requires a code edit + redeploy.
+### Admin Catalog: edit + create form
+
+**What:** Build the actual form for the Catalog edit drawer + the "+ Add product" button. Backend (`POST /staff/products` + `PATCH /staff/products/:id`) is live and audited; the form is the missing piece.
+
+**Why:** Without the form, "adding real medicines" still requires a curl. The catalog table reads from the new endpoint; only writes are missing on the UI.
+
+**Acceptance:** edit drawer has fields + Save button calling `api.updateProduct(id, partial)`. Add Product opens the same form empty + calls `api.createProduct(...)`. Optimistic UI via TanStack Query mutation + invalidate `['products']`.
+
+### Admin Catalog: bulk-import button
+
+**What:** Wire the existing "SFDA bulk import" button on Catalog.tsx to upload an Excel and call a future `POST /staff/products/import-sfda` endpoint.
+
+**Why:** v1 design accepted the CLI path (see below). The in-admin upload is v1.1.
 
 ### SFDA bulk-import CLI script
 
@@ -114,20 +126,13 @@ These don't come from the eng review; they're what the scaffolded admin frontend
 
 **Acceptance:** `npm run import:sfda` from `backend/` populates products; running it twice doesn't duplicate; idempotency keyed on `sfda_id`.
 
-### Staff orders endpoint
+### ✅ Staff orders endpoint (shipped)
 
-**What:** `GET /staff/orders` returning all orders (paginated by date, default last 7 days), with customer name/phone joined. Optional `?status=...` filter.
+`GET /staff/orders` returns up to 200 most recent orders with customer name/phone joined. `?status=` filter works. `GET /staff/orders/:id` and `PATCH /staff/orders/:id/status` also live.
 
-**Why:** The admin Today page shows the live orders queue. Currently it falls back to `/orders` (which is user-scoped to the admin's own orders — empty in practice).
+### ✅ Staff prescription queue + approve/reject (shipped)
 
-### Staff prescription queue + approve/reject
-
-**What:**
-- `GET /staff/prescriptions/pending` returns the unreviewed Rx queue with image URLs.
-- `POST /staff/prescriptions/:id/approve` records `approvedBy = caller.userId`, `approvedAt = now()`. Unlocks the customer's order.
-- `POST /staff/prescriptions/:id/reject` records `rejectedBy / rejectedAt`, sends a templated SMS via the existing SMS provider.
-
-**Why:** Regulated flow. Backend-only feature; the admin has a placeholder page ready.
+`GET /staff/prescriptions/pending`, `POST /staff/prescriptions/:id/approve`, `POST /staff/prescriptions/:id/reject` all live. Admin's Prescriptions page is wired to the queue with approve/reject actions. Templated SMS-on-reject is **not** wired yet (TODO: `lib/sms.ts` already has `sendSms` — call it from the reject handler).
 
 ---
 

@@ -29,11 +29,17 @@ export const users = sqliteTable(
     passwordHash: text('password_hash'),
     firstName: text('first_name').notNull().default(''),
     lastName: text('last_name').notNull().default(''),
-    role: text('role', { enum: ['customer', 'pharmacist', 'admin'] })
+    // 'owner' is the super-admin role (Mishari). Future RBAC reads role,
+    // not a separate boolean. Plan-eng-review rec 3A — see TODOS.md.
+    role: text('role', { enum: ['customer', 'pharmacist', 'admin', 'owner'] })
       .notNull()
       .default('customer'),
     // Set when the row has been mirrored into Firebase Auth. Null until then.
     firebaseUid: text('firebase_uid').unique(),
+    // Soft delete. PDPL erasure is a separate cooler-headed flow. NEVER
+    // query `users` directly without going through liveUsers() (lib/live.ts)
+    // unless you intentionally want to see deleted rows for audit purposes.
+    deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -106,6 +112,10 @@ export const products = sqliteTable(
     // resolve a physical pack to a product row. Unique when set; null is
     // allowed for items without a printed barcode.
     barcode: text('barcode').unique(),
+    // SFDA medication-list ID for idempotent bulk-import. See
+    // backend/scripts/import-sfda.ts.
+    sfdaId: text('sfda_id').unique(),
+    deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -185,6 +195,7 @@ export const orders = sqliteTable(
       .notNull()
       .default('mada'),
     notes: text('notes'),
+    deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
     placedAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -243,6 +254,54 @@ export const stockMovements = sqliteTable(
   },
   (t) => ({
     productIdx: index('stock_movements_product_idx').on(t.productId),
+  })
+);
+
+/**
+ * Append-only audit log.
+ *
+ * Every mutating staff endpoint writes one row inside its own Drizzle
+ * transaction (see lib/audit.ts → audit()) so audit cannot drift from
+ * data state — if the data write succeeds, the audit row succeeded too.
+ *
+ * Customer-data reads (customer profile view, medical profile view,
+ * search hit) write a row via auditRead() which is fire-and-forget; a
+ * read failure should not fail the response, but the row landing is
+ * required for PDPL compliance.
+ *
+ *   actor_user_id          who did it (FK users.id)
+ *   actor_role             role snapshot at the time
+ *   action                 e.g. 'product.update', 'customer.medical_profile_view'
+ *   entity_type            'product' | 'order' | 'user' | 'prescription' | ...
+ *   entity_id              the entity touched (nullable for searches)
+ *   before_json            null for inserts and reads
+ *   after_json             null for deletes and reads
+ *   ip_addr / user_agent   request metadata
+ */
+export const auditLog = sqliteTable(
+  'audit_log',
+  {
+    id: id(),
+    actorUserId: text('actor_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    actorRole: text('actor_role').notNull(),
+    action: text('action').notNull(),
+    entityType: text('entity_type'),
+    entityId: text('entity_id'),
+    beforeJson: text('before_json'),
+    afterJson: text('after_json'),
+    ipAddr: text('ip_addr'),
+    userAgent: text('user_agent'),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    actorIdx: index('audit_log_actor_idx').on(t.actorUserId, t.createdAt),
+    entityIdx: index('audit_log_entity_idx').on(
+      t.entityType,
+      t.entityId,
+      t.createdAt
+    ),
   })
 );
 
@@ -350,3 +409,4 @@ export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type StockMovement = typeof stockMovements.$inferSelect;
+export type AuditLog = typeof auditLog.$inferSelect;
