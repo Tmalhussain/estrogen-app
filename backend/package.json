@@ -1,0 +1,39 @@
+{
+  "name": "estrogen-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/cloudFunction.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:reset": "rm -f data.db && npm run db:migrate && npm run db:seed",
+    "key:create": "tsx scripts/create-api-key.ts",
+    "tsc": "tsc --noEmit",
+    "build:functions": "esbuild src/cloudFunction.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/cloudFunction.js --external:better-sqlite3 --external:firebase-admin --external:firebase-functions --external:postgres --external:hono --external:@hono/node-server --external:drizzle-orm --external:jose"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.1",
+    "better-sqlite3": "^12.9.0",
+    "drizzle-orm": "^0.45.2",
+    "firebase-admin": "^13.8.0",
+    "firebase-functions": "^7.2.5",
+    "hono": "^4.12.18",
+    "jose": "^6.2.3",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.0.0",
+    "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.0"
+  }
+}
