@@ -1,30 +1,27 @@
 /**
  * Design tokens — admin web side.
  *
+ * Aligned 2026-05-07 to match the existing customer site
+ * estrogenpharmacy.com (single deep-purple brand, pure white background).
  * Mirrors mobile/constants/theme.ts plus admin-specific additions
- * (Geist Mono for numerics, denser type scale). DO NOT diverge — keep
- * this file in sync with mobile theme tokens. See DESIGN.md.
+ * (Geist Mono for numerics, denser type scale).
+ *
+ * DO NOT diverge — keep this file in sync with mobile theme tokens. See DESIGN.md.
  */
 
 export const palette = {
   white: '#FFFFFF',
-  cream: '#FBF7FA',
+
+  brand: '#752A79',
+  brandDark: '#5A1F5E',
+  brandSoft: '#F3E5F5',
+  brandOn: '#FFF6FF',
+
   ink: '#1A0F1A',
   inkSoft: '#4A3A4A',
   inkMuted: '#8A7A8A',
-  hairline: '#EDE6EC',
-  surface: '#F8F4F8',
-
-  primary: '#B02080',
-  primaryDark: '#8A1866',
-  primarySoft: '#F3D9E9',
-
-  plum: '#702070',
-  plumDark: '#561856',
-  plumSoft: '#E9D9E9',
-
-  blush: '#D080A0',
-  blushSoft: '#F8E8EF',
+  hairline: '#ECE5EC',
+  surface: '#FAF7FA',
 
   success: '#1F8F5F',
   successSoft: '#DDF1E7',
@@ -37,7 +34,7 @@ export const palette = {
 } as const;
 
 export const colors = {
-  bg: palette.cream,
+  bg: palette.white,
   bgWhite: palette.white,
   card: palette.white,
   surface: palette.surface,
@@ -45,15 +42,17 @@ export const colors = {
   textSoft: palette.inkSoft,
   textMuted: palette.inkMuted,
   border: palette.hairline,
-  divider: palette.surface,
+  divider: palette.hairline,
 
-  primary: palette.primary,
-  primaryDark: palette.primaryDark,
-  onPrimary: palette.white,
-  primaryDim: palette.primarySoft,
+  primary: palette.brand,
+  primaryDark: palette.brandDark,
+  onPrimary: palette.brandOn,
+  primaryDim: palette.brandSoft,
 
-  accent: palette.plum,
-  accentSoft: palette.plumSoft,
+  // Legacy aliases — same brand color, kept for compatibility while
+  // the admin pages migrate off accent / accentSoft references.
+  accent: palette.brand,
+  accentSoft: palette.brandSoft,
 
   success: palette.success,
   successSoft: palette.successSoft,
@@ -71,6 +70,7 @@ export const radius = {
   md: 12,
   lg: 16,
   xl: 22,
+  cta: 24,
   pill: 999,
 } as const;
 
@@ -107,6 +107,7 @@ export const font = {
     medium: 500 as const,
     semi: 600 as const,
     bold: 700 as const,
+    black: 800 as const,
   },
 } as const;
 

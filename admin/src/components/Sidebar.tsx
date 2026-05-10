@@ -52,10 +52,10 @@ export default function Sidebar() {
                 <span
                   style={{
                     ...styles.dot,
-                    background: isActive ? '#B02080' : 'transparent',
+                    background: isActive ? '#752A79' : 'transparent',
                   }}
                 />
-                <span style={{ display: 'inline-flex', width: 16, color: isActive ? '#8A1866' : '#8A7A8A' }}>
+                <span style={{ display: 'inline-flex', width: 16, color: isActive ? '#5A1F5E' : '#8A7A8A' }}>
                   <item.Icon />
                 </span>
                 <span>{item.label}</span>
@@ -89,7 +89,7 @@ export default function Sidebar() {
 const styles: Record<string, React.CSSProperties> = {
   aside: {
     background: '#FFFFFF',
-    borderRight: '1px solid #EDE6EC',
+    borderRight: '1px solid #ECE5EC',
     padding: '20px 14px',
     display: 'flex',
     flexDirection: 'column',
@@ -107,7 +107,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: 26,
     height: 26,
     borderRadius: '50%',
-    background: '#B02080',
+    background: '#752A79',
     color: '#FFFFFF',
     display: 'grid',
     placeItems: 'center',
@@ -136,8 +136,8 @@ const styles: Record<string, React.CSSProperties> = {
     textDecoration: 'none',
   },
   navItemActive: {
-    background: '#F3D9E9',
-    color: '#8A1866',
+    background: '#F3E5F5',
+    color: '#5A1F5E',
     fontWeight: 600,
   },
   dot: {
@@ -149,7 +149,7 @@ const styles: Record<string, React.CSSProperties> = {
   footer: {
     marginTop: 'auto',
     paddingTop: 16,
-    borderTop: '1px solid #EDE6EC',
+    borderTop: '1px solid #ECE5EC',
     display: 'flex',
     alignItems: 'center',
     gap: 10,
@@ -160,8 +160,8 @@ const styles: Record<string, React.CSSProperties> = {
     width: 28,
     height: 28,
     borderRadius: '50%',
-    background: '#E9D9E9',
-    color: '#702070',
+    background: '#F3E5F5',
+    color: '#752A79',
     display: 'grid',
     placeItems: 'center',
     fontSize: 11,

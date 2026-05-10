@@ -195,7 +195,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 10,
     background: '#FFFFFF',
-    border: '1px solid #EDE6EC',
+    border: '1px solid #ECE5EC',
     borderRadius: 8,
     padding: '8px 12px',
     marginBottom: 16,
@@ -209,7 +209,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   card: {
     background: '#FFFFFF',
-    border: '1px solid #EDE6EC',
+    border: '1px solid #ECE5EC',
     borderRadius: 8,
     overflow: 'hidden',
   },
@@ -222,11 +222,11 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#8A7A8A',
     fontWeight: 600,
     padding: '10px 14px',
-    borderBottom: '1px solid #EDE6EC',
+    borderBottom: '1px solid #ECE5EC',
   },
   td: {
     padding: '12px 14px',
-    borderBottom: '1px solid #EDE6EC',
+    borderBottom: '1px solid #ECE5EC',
     fontSize: 13,
   },
   row: { cursor: 'pointer' },
@@ -234,7 +234,7 @@ const styles: Record<string, React.CSSProperties> = {
   productNameAr: { fontSize: 12, color: '#8A7A8A', marginTop: 2 },
   empty: { padding: 32, color: '#8A7A8A', textAlign: 'center', fontSize: 13 },
   btnPrimary: {
-    background: '#B02080',
+    background: '#752A79',
     color: '#FFFFFF',
     border: 'none',
     padding: '8px 14px',
@@ -245,7 +245,7 @@ const styles: Record<string, React.CSSProperties> = {
   btnSecondary: {
     background: '#FFFFFF',
     color: '#1A0F1A',
-    border: '1px solid #EDE6EC',
+    border: '1px solid #ECE5EC',
     padding: '8px 14px',
     borderRadius: 8,
     fontWeight: 600,
@@ -276,7 +276,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     padding: '20px 24px 16px',
-    borderBottom: '1px solid #EDE6EC',
+    borderBottom: '1px solid #ECE5EC',
     gap: 16,
   },
   drawerEyebrow: {
@@ -331,8 +331,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   fieldValue: { fontSize: 13, color: '#1A0F1A' },
   descBlock: {
-    background: '#FBF7FA',
-    border: '1px solid #EDE6EC',
+    background: '#FFFFFF',
+    border: '1px solid #ECE5EC',
     borderRadius: 6,
     padding: '10px 12px',
     color: '#4A3A4A',
@@ -340,7 +340,7 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.6,
   },
   drawerFoot: {
-    borderTop: '1px solid #EDE6EC',
+    borderTop: '1px solid #ECE5EC',
     padding: '16px 24px',
   },
   note: { fontSize: 11, color: '#8A7A8A' },

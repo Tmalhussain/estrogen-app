@@ -17,7 +17,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: '220px 1fr',
     minHeight: '100vh',
-    background: '#FBF7FA',
+    background: '#FFFFFF',
   },
   main: {
     overflow: 'auto',

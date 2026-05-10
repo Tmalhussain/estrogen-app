@@ -14,7 +14,7 @@ body {
   font-size: 13px;
   line-height: 1.5;
   color: #1A0F1A;
-  background: #FBF7FA;
+  background: #FFFFFF;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -50,9 +50,9 @@ a {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #EDE6EC;
+  background: #ECE5EC;
   border-radius: 5px;
-  border: 2px solid #FBF7FA;
+  border: 2px solid #FFFFFF;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #D8C9D5;
@@ -60,6 +60,6 @@ a {
 
 /* ---------- Focus ring (magenta — not blue, per DESIGN.md) ---------- */
 :focus-visible {
-  outline: 2px solid #B02080;
+  outline: 2px solid #752A79;
   outline-offset: 2px;
 }

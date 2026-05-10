@@ -136,7 +136,11 @@ export default function HomeScreen() {
       </ScrollView>
 
       <View style={styles.section}>
-        <SectionHeader title="Shop by life stage" />
+        <SectionHeader
+          eyebrow="أقسامنا · Our sections"
+          title="Shop by life stage"
+          subtitle="Browse what's right for you, from babies to golden years."
+        />
         <View style={styles.stageGrid}>
           {lifeStages.map((s) => (
             <Pressable
@@ -159,7 +163,10 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Shop by type" />
+        <SectionHeader
+          eyebrow="حسب الفئة · By category"
+          title="Shop by type"
+        />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -178,8 +185,9 @@ export default function HomeScreen() {
 
       <View style={styles.section}>
         <SectionHeader
+          eyebrow="مختارة لكِ · Editor's picks"
           title="Featured for you"
-          subtitle="Pharmacist-picked, pregnancy-safe"
+          subtitle="Pharmacist-picked, pregnancy-safe."
           actionLabel="See all"
           onAction={() => router.push('/shop')}
         />
@@ -216,7 +224,8 @@ export default function HomeScreen() {
 
       <View style={styles.section}>
         <SectionHeader
-          title="Best sellers"
+          eyebrow="الأكثر مبيعًا · Best sellers"
+          title="Trusted by Saudi women"
           actionLabel="See all"
           onAction={() => router.push('/shop')}
         />

@@ -10,13 +10,13 @@ export type PillTone =
   | 'neutral';
 
 const TONE: Record<PillTone, { bg: string; fg: string }> = {
-  placed: { bg: '#F8F4F8', fg: '#4A3A4A' },
+  placed: { bg: '#FAF7FA', fg: '#4A3A4A' },
   preparing: { bg: '#FBEDD3', fg: '#C77B0A' },
   dispatched: { bg: '#DDE9F5', fg: '#2563A8' },
   delivered: { bg: '#DDF1E7', fg: '#1F8F5F' },
   stuck: { bg: '#FBE0E4', fg: '#C8253A' },
-  info: { bg: '#F3D9E9', fg: '#8A1866' },
-  neutral: { bg: '#F8F4F8', fg: '#4A3A4A' },
+  info: { bg: '#F3E5F5', fg: '#5A1F5E' },
+  neutral: { bg: '#FAF7FA', fg: '#4A3A4A' },
 };
 
 export function Pill({
