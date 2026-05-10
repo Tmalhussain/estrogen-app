@@ -1,58 +1,66 @@
 /**
- * Brand tokens derived directly from logo.png.
- * Sampling produced three dominant non-white colors:
- *   #702070  deep purple   (wordmark)
- *   #B02080  magenta       (geometric frame)
- *   #D080A0  blush pink    (silhouette accents)
+ * Brand tokens for Estrogen Pharmacy mobile.
+ *
+ * Aligned 2026-05-07 to match the existing customer site
+ * estrogenpharmacy.com:
+ *   - Monochromatic deep purple (#752A79) as the single brand accent
+ *   - Pure white page background
+ *   - Big bold H2 sections (32–40px / weight 800), letter-spacing normal
+ *   - Pill-ish CTAs at 24px radius
+ *
+ * See DESIGN.md for the full system. This file mirrors the same
+ * palette in admin/src/styles/theme.ts — keep them in sync.
  */
 
 export const palette = {
   white: '#FFFFFF',
-  cream: '#FBF7FA',
+
+  // Single brand color, used 397x on estrogenpharmacy.com.
+  brand: '#752A79',
+  brandDark: '#5A1F5E',
+  brandSoft: '#F3E5F5',
+  brandOn: '#FFF6FF', // tinted near-white used as fg on brand bg
+
+  // Neutrals (warm, purple-leaning gray family — pairs with brand)
   ink: '#1A0F1A',
   inkSoft: '#4A3A4A',
   inkMuted: '#8A7A8A',
-  hairline: '#EDE6EC',
-  surface: '#F8F4F8',
+  hairline: '#ECE5EC',
+  surface: '#FAF7FA',
 
-  primary: '#B02080',
-  primaryDark: '#8A1866',
-  primarySoft: '#F3D9E9',
-
-  plum: '#702070',
-  plumDark: '#561856',
-  plumSoft: '#E9D9E9',
-
-  blush: '#D080A0',
-  blushSoft: '#F8E8EF',
-
+  // Semantic — only used on status pills, alerts, metric deltas
   success: '#1F8F5F',
   successSoft: '#DDF1E7',
   warning: '#C77B0A',
   warningSoft: '#FBEDD3',
   danger: '#C8253A',
   dangerSoft: '#FBE0E4',
+  info: '#2563A8',
+  infoSoft: '#DDE9F5',
 } as const;
 
 export const colors = {
-  bg: palette.white,
-  bgAlt: palette.cream,
+  bg: palette.white, // page background, EVERYWHERE
+  bgAlt: palette.surface,
   card: palette.white,
   text: palette.ink,
   textSoft: palette.inkSoft,
   textMuted: palette.inkMuted,
   border: palette.hairline,
-  divider: palette.surface,
+  divider: palette.hairline,
 
-  primary: palette.primary,
-  onPrimary: palette.white,
-  primaryDim: palette.primarySoft,
+  primary: palette.brand,
+  primaryDark: palette.brandDark,
+  onPrimary: palette.brandOn,
+  primaryDim: palette.brandSoft,
 
-  accent: palette.plum,
-  accentSoft: palette.plumSoft,
-
-  blush: palette.blush,
-  blushSoft: palette.blushSoft,
+  // Legacy aliases — kept so existing components compile while we migrate.
+  // These point at the same brand color; remove the references one by one
+  // and then drop these aliases in a follow-up.
+  accent: palette.brand,
+  accentSoft: palette.brandSoft,
+  blush: palette.brand,
+  blushSoft: palette.brandSoft,
 
   success: palette.success,
   successSoft: palette.successSoft,
@@ -60,6 +68,8 @@ export const colors = {
   warningSoft: palette.warningSoft,
   danger: palette.danger,
   dangerSoft: palette.dangerSoft,
+  info: palette.info,
+  infoSoft: palette.infoSoft,
 } as const;
 
 export const radius = {
@@ -68,6 +78,7 @@ export const radius = {
   md: 12,
   lg: 16,
   xl: 22,
+  cta: 24, // primary CTA pill — matches estrogenpharmacy.com
   pill: 999,
 } as const;
 
@@ -88,6 +99,7 @@ export const font = {
     medium: 'DMSans_500Medium',
     semi: 'DMSans_600SemiBold',
     bold: 'DMSans_700Bold',
+    black: 'DMSans_700Bold', // 800 falls back to 700 in current font config; bump file later
     arRegular: 'Tajawal_400Regular',
     arMedium: 'Tajawal_500Medium',
     arBold: 'Tajawal_700Bold',
@@ -96,11 +108,12 @@ export const font = {
     xxs: 11,
     xs: 12,
     sm: 13,
-    md: 15,
+    md: 15, // matches estrogenpharmacy.com body 15px
     lg: 17,
     xl: 20,
     xxl: 24,
     display: 30,
+    sectionH2: 32, // big section heading on Home / Shop — inspo uses 40 on web, 32 reads well on mobile
   },
   weight: {
     regular: '400' as const,
@@ -114,7 +127,7 @@ export const font = {
 export const shadow = {
   card: {
     shadowColor: '#2A0A1F',
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,

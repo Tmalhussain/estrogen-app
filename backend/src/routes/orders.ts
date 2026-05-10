@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '../db/index.ts';
 import { requireAuth, type AuthVariables } from '../middleware/auth.ts';
+import { liveOrders, liveProducts } from '../lib/live.ts';
 
 const VAT_RATE = 0.15;
 const FREE_DELIVERY_THRESHOLD = 100;
@@ -17,7 +18,7 @@ orderRoutes.get('/', async (c) => {
   const rows = await db
     .select()
     .from(schema.orders)
-    .where(eq(schema.orders.userId, claims.sub))
+    .where(and(eq(schema.orders.userId, claims.sub), liveOrders()))
     .orderBy(desc(schema.orders.placedAt));
 
   if (rows.length === 0) return c.json({ orders: [] });
@@ -50,7 +51,13 @@ orderRoutes.get('/:id', async (c) => {
   const [order] = await db
     .select()
     .from(schema.orders)
-    .where(and(eq(schema.orders.id, id), eq(schema.orders.userId, claims.sub)))
+    .where(
+      and(
+        eq(schema.orders.id, id),
+        eq(schema.orders.userId, claims.sub),
+        liveOrders()
+      )
+    )
     .limit(1);
   if (!order) return c.json({ error: 'order_not_found' }, 404);
   const items = await db
@@ -101,9 +108,12 @@ orderRoutes.post('/', async (c) => {
     .select()
     .from(schema.products)
     .where(
-      inArray(
-        schema.products.id,
-        lines.map((l) => l.productId)
+      and(
+        inArray(
+          schema.products.id,
+          lines.map((l) => l.productId)
+        ),
+        liveProducts()
       )
     );
   const productMap = new Map(productRows.map((p) => [p.id, p]));

@@ -1,6 +1,15 @@
 # Estrogen Pharmacy
 
-Frontend-only React Native + Expo SDK 56 app. No backend; placeholder data lives in [mobile/data/](mobile/data/). Brand assets are derived from `logo.jpeg` at the repo root.
+Two surfaces, one repo:
+- **`mobile/`** — Expo SDK 56 customer app. Shipped, on GitHub.
+- **`backend/`** — Hono + Drizzle (SQLite dev / Postgres prod). Ships behind both surfaces.
+- **`admin/`** — Operator's Cockpit web app (Vite + React). Designed; build pending.
+
+## Design system
+
+**Always read [DESIGN.md](DESIGN.md) before making any visual or UI decision.** All font choices, colors, spacing, radius, and aesthetic direction are defined there. Do not deviate without explicit user approval. In QA mode, flag any code that doesn't match DESIGN.md.
+
+Tokens live in [mobile/constants/theme.ts](mobile/constants/theme.ts) — admin will mirror the same tokens in `admin/src/styles/theme.ts`.
 
 ## Brand
 
@@ -9,8 +18,6 @@ Colors come straight from the logo:
 - Primary magenta `#B02080`
 - Deep purple `#702070`
 - Blush pink `#D080A0`
-
-Brand tokens — palette, spacing, radius, typography, shadow — live in [mobile/constants/theme.ts](mobile/constants/theme.ts). Reach for the tokens, not raw hex.
 
 Estrogen is a NEW brand from Al-Mishari Hospital. Never use "since 1986" / "40-year heritage" framing for Estrogen itself — that history belongs to the parent hospital.
 

@@ -1,0 +1,65 @@
+/* ---------- Reset + base ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1A0F1A;
+  background: #FFFFFF;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---------- Numerics with tabular-nums ---------- */
+/* Required for: order IDs, SAR prices, phone numbers, dates, SKUs, audit timestamps. */
+.mono {
+  font-family: 'Geist Mono', 'SF Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Arabic text helper ---------- */
+.ar {
+  font-family: 'Tajawal', 'DM Sans', sans-serif;
+}
+
+/* ---------- Scrollbar polish ---------- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #ECE5EC;
+  border-radius: 5px;
+  border: 2px solid #FFFFFF;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D8C9D5;
+}
+
+/* ---------- Focus ring (magenta — not blue, per DESIGN.md) ---------- */
+:focus-visible {
+  outline: 2px solid #752A79;
+  outline-offset: 2px;
+}

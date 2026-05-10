@@ -5,11 +5,19 @@ const SECRET = new TextEncoder().encode(
 );
 const EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '7d';
 
+export type StaffRole = 'pharmacist' | 'admin' | 'owner';
+export type UserRole = 'customer' | StaffRole;
+
 export type SessionClaims = {
   sub: string;
   email: string;
-  role: 'customer' | 'pharmacist' | 'admin';
+  role: UserRole;
 };
+
+/** Helper: is the caller a staff member (any non-customer role). */
+export function isStaffRole(role: UserRole): role is StaffRole {
+  return role !== 'customer';
+}
 
 export async function signSession(claims: SessionClaims): Promise<string> {
   return await new SignJWT(claims)

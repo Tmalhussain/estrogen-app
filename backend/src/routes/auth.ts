@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db, schema } from '../db/index.ts';
 import { hashPassword, verifyPassword } from '../lib/passwords.ts';
 import { signSession } from '../lib/jwt.ts';
+import { liveUsers } from '../lib/live.ts';
 import { requireAuth, type AuthVariables } from '../middleware/auth.ts';
 
 export const authRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -30,7 +31,7 @@ authRoutes.post('/signup', async (c) => {
   const [existing] = await db
     .select({ id: schema.users.id })
     .from(schema.users)
-    .where(eq(schema.users.email, normalized))
+    .where(and(eq(schema.users.email, normalized), liveUsers()))
     .limit(1);
   if (existing) return c.json({ error: 'email_already_registered' }, 409);
 
@@ -66,7 +67,7 @@ authRoutes.post('/login', async (c) => {
   const [user] = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.email, normalized))
+    .where(and(eq(schema.users.email, normalized), liveUsers()))
     .limit(1);
 
   // Constant-ish time: still hash a dummy password if user is missing or
@@ -93,7 +94,7 @@ authRoutes.get('/me', requireAuth, async (c) => {
   const [user] = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.id, claims.sub))
+    .where(and(eq(schema.users.id, claims.sub), liveUsers()))
     .limit(1);
   if (!user) return c.json({ error: 'user_not_found' }, 404);
   return c.json({ user: publicUser(user) });
